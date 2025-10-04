@@ -2825,12 +2825,12 @@ exports['deployment.js.resolveBinaryModules'] = {
 
       test.equal(this.readGypFileSync.callCount, 1);
       test.equal(this.spawnSync.callCount, 1);
-      test.equal(this.spawnSync.lastCall.args[0], 'python');
+      test.equal(this.spawnSync.lastCall.args[0], 'python3');
 
       var python = this.spawnSync.lastCall.args[1][1];
 
-      test.equal(python.startsWith('import ast, json; print json.dumps(ast.literal_eval(open('), true);
-      test.equal(python.endsWith(').read()));'), true);
+      test.equal(python.startsWith('import ast, json; print(json.dumps(ast.literal_eval(open('), true);
+      test.equal(python.endsWith(').read())))'), true);
       test.equal(python.includes('missing'), true);
 
       test.done();
