@@ -295,13 +295,9 @@ exports['init --lang=rust'] = {
     test.expect(5);
 
     // Does not exist, will be created.
-    this.exists = this.sandbox.stub(fs, 'exists').callsFake((filename, callback) => {
-      callback(false);
-    });
+    this.pathExists = this.sandbox.stub(fs, 'pathExists').returns(Promise.resolve(false));
 
-    this.mkdir = this.sandbox.stub(fs, 'mkdir').callsFake((dirname, callback) => {
-      callback(false);
-    });
+    this.mkdir = this.sandbox.stub(fs, 'mkdir').returns(Promise.resolve());
 
     init.rs.createSampleProgram()
       .then(() => {
@@ -324,21 +320,9 @@ exports['init --lang=javascript'] = {
     this.warn = this.sandbox.stub(log, 'warn');
     this.info = this.sandbox.stub(log, 'info');
 
-    this.writeFile = this.sandbox.stub(fs, 'writeFile').callsFake((filename, encoding, callback) => {
-      callback(null, {
-        stub: true,
-        filename
-      });
-    });
-    this.readFile = this.sandbox.stub(fs, 'readFile').callsFake((filename, encoding, callback) => {
-      callback(null, {
-        stub: true,
-        filename
-      });
-    });
-    this.copy = this.sandbox.stub(fs, 'copy').callsFake((src, dest, callback) => {
-      callback();
-    });
+    this.writeFile = this.sandbox.stub(fs, 'writeFile').returns(Promise.resolve());
+    this.readFile = this.sandbox.stub(fs, 'readFile').returns(Promise.resolve('{}'));
+    this.copy = this.sandbox.stub(fs, 'copy').returns(Promise.resolve());
 
     const projectDependencyPath = path.normalize('test/unit/fixtures/project-binary-modules/node_modules/release/package.json');
 
@@ -346,18 +330,6 @@ exports['init --lang=javascript'] = {
       return [
         projectDependencyPath
       ];
-    });
-
-    this.npm = {
-      commands: {
-        install(deps, callback) {
-          callback();
-        }
-      }
-    };
-
-    this.npmLoad = this.sandbox.stub(npm, 'load').callsFake((callback) => {
-      callback(null, this.npm);
     });
 
     done();
@@ -429,23 +401,31 @@ exports['init --lang=javascript'] = {
   loadNpmSuccess(test) {
     test.expect(1);
 
+    // Stub child_process.execFile for npm config list
+    const cp = require('child_process');
+    const util = require('util');
+    this.execFile = this.sandbox.stub(cp, 'execFile').callsFake((cmd, args, callback) => {
+      callback(null, { stdout: '{}', stderr: '' });
+    });
+
     init.js.loadNpm().then(() => {
-      test.equal(this.npmLoad.callCount, 1);
+      test.equal(this.execFile.callCount, 1);
       test.done();
     });
   },
 
   loadNpmFailure(test) {
-    test.expect(2);
+    test.expect(1);
 
-    this.npmLoad.restore();
-    this.npmLoad = this.sandbox.stub(npm, 'load').callsFake((callback) => {
-      callback(new Error('npm.load failed?'), {});
+    // Stub child_process.execFile for npm config list
+    const cp = require('child_process');
+    this.execFile = this.sandbox.stub(cp, 'execFile').callsFake((cmd, args, callback) => {
+      callback(new Error('npm config failed'));
     });
 
-    init.js.loadNpm().catch((error) => {
-      test.equal(this.npmLoad.callCount, 1);
-      test.equal(error.toString(), 'Error: npm.load failed?');
+    // Should not fail, just return empty object
+    init.js.loadNpm().then((result) => {
+      test.deepEqual(result, {});
       test.done();
     });
   },
@@ -454,9 +434,7 @@ exports['init --lang=javascript'] = {
     test.expect(1);
 
     this.readFile.restore();
-    this.readFile = this.sandbox.stub(fs, 'readFile').callsFake((file, encoding, callback) => {
-      callback(null, '{}');
-    });
+    this.readFile = this.sandbox.stub(fs, 'readFile').returns(Promise.resolve('{}'));
 
     init.js.readPackageJson().then(() => {
       test.equal(this.readFile.callCount, 1);
@@ -468,9 +446,7 @@ exports['init --lang=javascript'] = {
     test.expect(2);
 
     this.readFile.restore();
-    this.readFile = this.sandbox.stub(fs, 'readFile').callsFake((file, encoding, callback) => {
-      callback(new Error('fs.readFile failed?'), {});
-    });
+    this.readFile = this.sandbox.stub(fs, 'readFile').returns(Promise.reject(new Error('fs.readFile failed?')));
 
     init.js.readPackageJson().catch((error) => {
       test.equal(this.readFile.callCount, 1);
@@ -483,9 +459,7 @@ exports['init --lang=javascript'] = {
     test.expect(1);
 
     this.writeFile.restore();
-    this.writeFile = this.sandbox.stub(fs, 'writeFile').callsFake((file, data, callback) => {
-      callback(null, '{}');
-    });
+    this.writeFile = this.sandbox.stub(fs, 'writeFile').returns(Promise.resolve());
 
     init.js.writePackageJson().then(() => {
       test.equal(this.writeFile.callCount, 1);
@@ -497,9 +471,7 @@ exports['init --lang=javascript'] = {
     test.expect(2);
 
     this.writeFile.restore();
-    this.writeFile = this.sandbox.stub(fs, 'writeFile').callsFake((file, data, callback) => {
-      callback(new Error('fs.writeFile failed?'), {});
-    });
+    this.writeFile = this.sandbox.stub(fs, 'writeFile').returns(Promise.reject(new Error('fs.writeFile failed?')));
 
     init.js.writePackageJson().catch((error) => {
       test.equal(this.writeFile.callCount, 1);
@@ -531,11 +503,12 @@ exports['init --lang=javascript'] = {
   npmInstallNoDeps(test) {
     test.expect(1);
 
-    this.loadNpm = this.sandbox.stub(init.js, 'loadNpm');
+    const cp = require('child_process');
+    this.execFile = this.sandbox.stub(cp, 'execFile');
 
     init.js.npmInstall([])
       .then(() => {
-        test.equal(this.loadNpm.callCount, 0);
+        test.equal(this.execFile.callCount, 0);
         test.done();
       });
   },
@@ -550,20 +523,15 @@ exports['init --lang=javascript'] = {
       'release@1.1.1',
     ];
 
-    const npm = {
-      commands: {
-        install(dependencies, callback) {
-          test.ok(true);
-          callback();
-        },
-      }
-    };
-
-    this.loadNpm = this.sandbox.stub(init.js, 'loadNpm').returns(Promise.resolve(npm));
+    const cp = require('child_process');
+    this.execFile = this.sandbox.stub(cp, 'execFile').callsFake((cmd, args, opts, callback) => {
+      test.ok(true);
+      callback(null, { stdout: '', stderr: '' });
+    });
 
     init.js.npmInstall(dependencies)
       .then(() => {
-        test.equal(this.loadNpm.callCount, 1);
+        test.equal(this.execFile.callCount, 1);
         test.done();
       });
   },
@@ -577,20 +545,16 @@ exports['init --lang=javascript'] = {
       'release@1.1.1',
     ];
 
-    const npm = {
-      commands: {
-        install(dependencies, callback) {
-          test.ok(true);
-          callback(new Error('npm.commands.install failed?'));
-        },
-      }
-    };
-
-    this.loadNpm = this.sandbox.stub(init.js, 'loadNpm').returns(Promise.resolve(npm));
+    const cp = require('child_process');
+    const error = new Error('npm install failed?');
+    this.execFile = this.sandbox.stub(cp, 'execFile').callsFake((cmd, args, opts, callback) => {
+      test.ok(true);
+      callback(error);
+    });
 
     init.js.npmInstall(dependencies)
-      .catch(error => {
-        test.equal(error.toString(), 'Error: npm.commands.install failed?');
+      .catch(err => {
+        test.equal(err.message, 'npm install failed?');
         test.done();
       });
   },
