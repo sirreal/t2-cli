@@ -36,7 +36,6 @@ global.npmlog = require('npmlog');
 global.osenv = require('osenv');
 global.Project = require('t2-project');
 global.Progress = require('t2-progress');
-global.request = require('request');
 global.sinon = require('sinon');
 global.sshpk = require('sshpk');
 global.ssh = require('ssh2');

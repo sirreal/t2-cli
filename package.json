@@ -69,7 +69,6 @@
     "npmlog": "^4.1.0",
     "osenv": "^0.1.5",
     "promzard": "^0.3.0",
-    "request": "^2.88.0",
     "semver": "^5.5.0",
     "sha.js": "^2.4.11",
     "shell-escape": "^0.2.0",
