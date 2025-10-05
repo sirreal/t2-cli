@@ -57,8 +57,8 @@ export function registerMethods(Tessel) {
 		}
 
 		// Check if local .tessel file has keypair, if not, put it there
-		return actions.setupLocal(authKey).then(() => {
-			return actions.authTessel(this, authKey).catch(function (err) {
+		return setupLocal(authKey).then(() => {
+			return authTessel(this, authKey).catch(function (err) {
 				if (err instanceof AlreadyAuthenticatedError) {
 					log.info(err.message);
 				} else {
@@ -69,10 +69,8 @@ export function registerMethods(Tessel) {
 	};
 }
 
-var actions = {};
-
 // Make sure local computer is set up to authorize with Tessel
-actions.setupLocal = function (keyFile) {
+export function setupLocal(keyFile) {
 	if (!keyFile || typeof keyFile !== 'string') {
 		keyFile = authKey;
 	}
@@ -120,40 +118,38 @@ actions.setupLocal = function (keyFile) {
 			);
 		});
 	});
-};
+}
 
 // Put the specified SSH key in Tessel's auth file
-actions.authTessel = function (tessel, filepath) {
+export function authTessel(tessel, filepath) {
 	return new Promise(function (resolve, reject) {
 		log.info('Authenticating Tessel with public key...');
 		// Make sure Tessel has the authFile
-		actions
-			.checkAuthFileExists(tessel, remoteAuthFile)
-			.then(function readKey() {
-				// Read the public key
-				fs.readFile(filepath + '.pub', 'utf8', (err, pubKey) => {
-					if (err) {
-						return reject(err);
-					}
+		checkAuthFileExists(tessel, remoteAuthFile).then(function readKey() {
+			// Read the public key
+			fs.readFile(filepath + '.pub', 'utf8', (err, pubKey) => {
+				if (err) {
+					return reject(err);
+				}
 
-					// See if the public key is already in the authFile
-					return checkIfKeyInFile(tessel, remoteAuthFile, pubKey)
-						.then(function keyNotInFile() {
-							// Copy pubKey into authFile
-							return copyKey(tessel, remoteAuthFile, pubKey).then(resolve);
-						})
-						.catch(reject);
-				});
+				// See if the public key is already in the authFile
+				return checkIfKeyInFile(tessel, remoteAuthFile, pubKey)
+					.then(function keyNotInFile() {
+						// Copy pubKey into authFile
+						return copyKey(tessel, remoteAuthFile, pubKey).then(resolve);
+					})
+					.catch(reject);
 			});
+		});
 	});
-};
+}
 
-actions.checkAuthFileExists = function (tessel, authFile) {
+export function checkAuthFileExists(tessel, authFile) {
 	// Ensure that the remote authorized_keys file exists
 	return tessel.simpleExec(commands.ensureFileExists(authFile));
-};
+}
 
-actions.setDefaultKey = function (keyPath) {
+export function setDefaultKey(keyPath) {
 	return new Promise(function (resolve, reject) {
 		if (!keyPath) {
 			return reject(new Error('No key provided to set as default.'));
@@ -180,7 +176,7 @@ actions.setDefaultKey = function (keyPath) {
 
 		return resolve();
 	});
-};
+}
 
 function checkIfKeyInFile(tessel, authFile, pubKey) {
 	return new Promise(function (resolve, reject) {
@@ -224,13 +220,11 @@ function copyKey(tessel, authFile, pubKey) {
 	});
 }
 
-function AlreadyAuthenticatedError() {
-	Error.captureStackTrace(this, this.constructor);
-	this.name = this.constructor.name;
-	this.message = 'Tessel is already authenticated with this computer.';
+export class AlreadyAuthenticatedError extends Error {
+	constructor(...args) {
+		super(...args);
+		Error.captureStackTrace(this, this.constructor);
+		this.name = this.constructor.name;
+		this.message = 'Tessel is already authenticated with this computer.';
+	}
 }
-
-util.inherits(AlreadyAuthenticatedError, Error);
-
-actions.AlreadyAuthenticatedError = AlreadyAuthenticatedError;
-export default actions;

@@ -21,28 +21,21 @@ var extract = tarExtract();
 const BUILD_SERVER_ROOT = `https://${remote.BUILDS_HOSTNAME}/t2`;
 const FIRMWARE_PATH = urljoin(BUILD_SERVER_ROOT, 'firmware');
 const BUILDS_JSON_FILE = urljoin(FIRMWARE_PATH, 'builds.json');
-const OPENWRT_BINARY_FILE = 'openwrt.bin';
-const FIRMWARE_BINARY_FILE = 'firmware.bin';
+export const OPENWRT_BINARY_FILE = 'openwrt.bin';
+export const FIRMWARE_BINARY_FILE = 'firmware.bin';
 
 const RESTORE_TGZ_URL =
 	'https://s3.amazonaws.com/builds.tessel.io/custom/new_build_next.tar.gz';
-const RESTORE_UBOOT_FILE = 'openwrt-ramips-mt7620-Default-u-boot.bin';
-const RESTORE_SQUASHFS_FILE =
+export const RESTORE_UBOOT_FILE = 'openwrt-ramips-mt7620-Default-u-boot.bin';
+export const RESTORE_SQUASHFS_FILE =
 	'openwrt-ramips-mt7620-tessel-squashfs-sysupgrade.bin';
 
-var exportables = {
-	OPENWRT_BINARY_FILE,
-	FIRMWARE_BINARY_FILE,
-	RESTORE_UBOOT_FILE,
-	RESTORE_SQUASHFS_FILE,
-};
-
-/*
+/**
   Requests a list of available builds from the
   build server. Returns list of build names in
   a Promise.
 */
-exportables.requestBuildList = function () {
+export function requestBuildList() {
 	return new Promise((resolve, reject) => {
 		return remote
 			.ifReachable(remote.BUILDS_HOSTNAME)
@@ -53,7 +46,7 @@ exportables.requestBuildList = function () {
 						return reject(err);
 					}
 
-					var outcome = exportables.reviewResponse(response);
+					var outcome = reviewResponse(response);
 					var builds;
 					// If there wasn't an issue with the request
 					if (outcome.success) {
@@ -76,18 +69,18 @@ exportables.requestBuildList = function () {
 			})
 			.catch(reject);
 	});
-};
+}
 
-exportables.loadLocalBinaries = function (options) {
+export function loadLocalBinaries(options) {
 	var openwrtUpdateLoad = Promise.resolve(Buffer.alloc(0));
 	var firmwareUpdateLoad = Promise.resolve(Buffer.alloc(0));
 
 	if (options['openwrt-path']) {
-		openwrtUpdateLoad = exportables.loadLocalBinary(options['openwrt-path']);
+		openwrtUpdateLoad = loadLocalBinary(options['openwrt-path']);
 	}
 
 	if (options['firmware-path']) {
-		firmwareUpdateLoad = exportables.loadLocalBinary(options['firmware-path']);
+		firmwareUpdateLoad = loadLocalBinary(options['firmware-path']);
 	}
 
 	return Promise.all([openwrtUpdateLoad, firmwareUpdateLoad]).then((images) => {
@@ -100,10 +93,10 @@ exportables.loadLocalBinaries = function (options) {
 			};
 		}
 	});
-};
+}
 
 // Reads a binary from a local path
-exportables.loadLocalBinary = function (path) {
+export function loadLocalBinary(path) {
 	return new Promise((resolve, reject) => {
 		fs.readFile(path, (error, binary) => {
 			if (error) {
@@ -113,31 +106,28 @@ exportables.loadLocalBinary = function (path) {
 			}
 		});
 	});
-};
+}
 
-exportables.fetchRestore = function () {
-	return exportables.downloadTgz(RESTORE_TGZ_URL, {
+export function fetchRestore() {
+	return downloadTgz(RESTORE_TGZ_URL, {
 		uboot: RESTORE_UBOOT_FILE,
 		squashfs: RESTORE_SQUASHFS_FILE,
 	});
-};
+}
 
 /*
   Accepts a build name and attempts to fetch
   the build images from the server. Returns build contents
   in a Promise
 */
-exportables.fetchBuild = function (build) {
-	return exportables.downloadTgz(
-		urljoin(FIRMWARE_PATH, `${build.sha}.tar.gz`),
-		{
-			firmware: FIRMWARE_BINARY_FILE,
-			openwrt: OPENWRT_BINARY_FILE,
-		},
-	);
-};
+export function fetchBuild(build) {
+	return downloadTgz(urljoin(FIRMWARE_PATH, `${build.sha}.tar.gz`), {
+		firmware: FIRMWARE_BINARY_FILE,
+		openwrt: OPENWRT_BINARY_FILE,
+	});
+}
 
-exportables.downloadTgz = function (tgzUrl, fileMap) {
+export function downloadTgz(tgzUrl, fileMap) {
 	return new Promise((resolve, reject) => {
 		log.info('Downloading files...');
 
@@ -214,9 +204,9 @@ exportables.downloadTgz = function (tgzUrl, fileMap) {
 			})
 			.catch(reject);
 	});
-};
+}
 
-exportables.reviewResponse = function (response) {
+export function reviewResponse(response) {
 	var outcome = {
 		success: true,
 	};
@@ -228,10 +218,8 @@ exportables.reviewResponse = function (response) {
 	}
 
 	return outcome;
-};
+}
 
-exportables.findBuild = function (builds, property, value) {
+export function findBuild(builds, property, value) {
 	return builds.find((build) => build[property] === value);
-};
-
-export default exportables;
+}
