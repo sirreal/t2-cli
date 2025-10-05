@@ -18,12 +18,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 let pkg, ctx, options;
-let packageJson = path.resolve('./package.json');
-let resources = path.resolve(__dirname, './../../', 'resources/javascript');
-let exportables = {};
+const packageJson = path.resolve('./package.json');
+const resources = path.resolve(__dirname, './../../', 'resources/javascript');
 
-exportables.meta = {
-	keywords: ['javascript', 'js'],
+const exportables = {
+	meta: {
+		keywords: ['javascript', 'js'],
+	},
 };
 
 exportables.loadNpm = () => {

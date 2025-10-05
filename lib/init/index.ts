@@ -5,20 +5,18 @@ import * as path from 'node:path';
 
 // Internal
 import * as log from '../log.ts';
-import * as javascript from './javascript.ts';
-import * as rust from './rust.ts';
-import * as python from './python.ts';
+import javascript from './javascript.ts';
+import rust from './rust.ts';
+import python from './python.ts';
 
-var languages = {
+export const languages = {
 	js: javascript,
 	rs: rust,
 	py: python,
 };
 
-var exportables = {};
-
 // Initialize the directory given the various options
-exportables.createNewProject = (options) => {
+export const createNewProject = (options) => {
 	// Stop spinner from being in our way while entering package.json data
 	log.spinner.stop();
 
@@ -26,7 +24,8 @@ exportables.createNewProject = (options) => {
 	options.directory = options.directory || path.resolve('.');
 
 	// Detect the requested language
-	var lang = exportables.resolveLanguage(options.lang);
+	var lang = resolveLanguage(options.lang);
+    console.log(lang);
 
 	// If a language could not be detected
 	if (lang === null) {
@@ -38,7 +37,7 @@ exportables.createNewProject = (options) => {
 };
 
 // Determine the langauge to initialize the project with
-exportables.resolveLanguage = (input) => {
+export const resolveLanguage = (input) => {
 	// If somehow a language option wasn't provided
 	if (!input) {
 		return languages.js;
@@ -64,6 +63,3 @@ exportables.resolveLanguage = (input) => {
 	// If not, someone has requested a language that is not supported
 	return null;
 };
-
-export default Object.assign(exportables, languages);
-export { exportables, languages };
