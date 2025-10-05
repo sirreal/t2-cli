@@ -1,19 +1,22 @@
 // System Objects
-var path = require('path');
-var fs = require('fs');
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+import { createGunzip } from 'node:zlib';
 
 // Third Party Dependencies
-var gunzip = require('zlib').createGunzip();
-var extract = require('tar-stream').extract();
-var Progress = require('t2-progress');
-var request = require('request');
-var streamToBuffer = require('stream-to-buffer');
-var urljoin = require('url-join');
-var semver = require('semver');
+import { extract as tarExtract } from 'tar-stream';
+import Progress from 't2-progress';
+import request from 'request';
+import streamToBuffer from 'stream-to-buffer';
+import urljoin from 'url-join';
+import semver from 'semver';
 
 // Internal
-var log = require('./log.ts');
-var remote = require('./remote.ts');
+import * as log from './log.ts';
+import * as remote from './remote.ts';
+
+var gunzip = createGunzip();
+var extract = tarExtract();
 
 const BUILD_SERVER_ROOT = `https://${remote.BUILDS_HOSTNAME}/t2`;
 const FIRMWARE_PATH = urljoin(BUILD_SERVER_ROOT, 'firmware');
@@ -231,4 +234,4 @@ exportables.findBuild = function (builds, property, value) {
 	return builds.find((build) => build[property] === value);
 };
 
-module.exports = exportables;
+export default exportables;

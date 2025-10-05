@@ -1,19 +1,24 @@
 // System Objects
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+import { createRequire } from 'node:module';
+import { inherits } from 'node:util';
+import { Duplex } from 'node:stream';
+import { EventEmitter } from 'node:events';
+import { execSync } from 'node:child_process';
 
-var util = require('util');
-var stream = require('stream');
-var events = require('events');
-const { execSync } = require('child_process');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
 
-var Duplex = stream.Duplex;
-var Emitter = events.EventEmitter;
+var Emitter = EventEmitter;
 
 // Third Party Dependencies
-const tags = require('common-tags');
+import tags from 'common-tags';
 
 // Internal
-var DFU = require('./dfu.ts');
-var log = require('./log.ts');
+import * as DFU from './dfu.ts';
+import * as log from './log.ts';
 
 function debug(message) {
 	log.debug(`(discovery:usb) ${message}`);
@@ -24,9 +29,13 @@ function debugCommands(message) {
 }
 
 var isUSBAvailable = true;
+var usb;
+var VENDOR_REQ_OUT;
 try {
-	var { usb } = require('usb');
-	var VENDOR_REQ_OUT =
+	// Dynamic require for optional dependency
+	const usbModule = require('usb');
+	usb = usbModule.usb;
+	VENDOR_REQ_OUT =
 		usb.LIBUSB_REQUEST_TYPE_VENDOR |
 		usb.LIBUSB_RECIPIENT_DEVICE |
 		usb.LIBUSB_ENDPOINT_OUT;
@@ -48,7 +57,7 @@ try {
 	}
 }
 
-var { daemon: Daemon } = require('./usb/usb-daemon.ts');
+import { daemon as Daemon } from './usb/usb-daemon.ts';
 
 var TESSEL_VID = 0x1209;
 var TESSEL_PID = 0x7551;
@@ -63,7 +72,7 @@ USB.Connection = function (device) {
 	this.epOut = undefined;
 };
 
-util.inherits(USB.Connection, Duplex);
+inherits(USB.Connection, Duplex);
 
 USB.Connection.prototype.exec = function (command, options, callback) {
 	// Account for the case where options are not provided but a callback is
@@ -429,7 +438,7 @@ function stopScan() {
 
 USB.Scanner = function () {};
 
-util.inherits(USB.Scanner, Emitter);
+inherits(USB.Scanner, Emitter);
 
 USB.Scanner.prototype.start = function () {
 	var deviceInspector = (device) => {
@@ -456,13 +465,6 @@ USB.Scanner.prototype.stop = function () {
 	}
 };
 
-module.exports.startScan = startScan;
-module.exports.stopScan = stopScan;
-module.exports.TESSEL_VID = TESSEL_VID;
-module.exports.TESSEL_PID = TESSEL_PID;
+export { startScan, stopScan, TESSEL_VID, TESSEL_PID, USB };
 // Exported for CLI API Consumers
-module.exports.USBConnection = USB.Connection;
-
-if (global.IS_TEST_ENV) {
-	module.exports.USB = USB;
-}
+export const USBConnection = USB.Connection;

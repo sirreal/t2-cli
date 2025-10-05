@@ -1,5 +1,5 @@
 // Third Party Dependencies
-var inquirer = require('inquirer');
+import inquirer from 'inquirer';
 
 /*
 controller.menu({
@@ -41,4 +41,5 @@ Menu.prompt = (setup) => {
 	});
 };
 
-module.exports = Menu;
+export default Menu;
+export { Menu };

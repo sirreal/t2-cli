@@ -5,9 +5,10 @@
 // ...
 
 // Internal
-var commands = require('./commands.ts');
-var Tessel = require('./tessel.ts');
+import * as commands from './commands.ts';
+import Tessel from './tessel.ts';
 
+export function registerMethods(Tessel) {
 /*
  Reboots Tessel
  */
@@ -21,3 +22,4 @@ Tessel.prototype.reboot = function () {
 
 	return Promise.race([p1, p2]);
 };
+}

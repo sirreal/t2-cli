@@ -2,12 +2,12 @@
 // ...
 
 // Third Party Dependencies
-var Progress = require('t2-progress');
+import Progress from 't2-progress';
 
 // Internal
-var log = require('../log.ts');
-var Tessel = require('./tessel.ts');
-var update = require('../update-fetch.ts');
+import * as log from '../log.ts';
+import Tessel from './tessel.ts';
+import * as update from '../update-fetch.ts';
 
 // Datasheet Reference:
 // http://www.cypress.com/file/177966/download
@@ -48,6 +48,10 @@ const EXPECTED_RDID = '010219';
 // TODO: Find reference
 const MAX_READ_SIZE = Math.pow(2, 24);
 
+// Contains functionality that must be stubbable in tests
+var exportables = {};
+
+export function registerMethods(Tessel) {
 Tessel.prototype.restore = function (options) {
 	return new Promise((resolve, reject) => {
 		var rdid = Promise.resolve();
@@ -67,9 +71,7 @@ Tessel.prototype.restore = function (options) {
 		});
 	});
 };
-
-// Contains functionality that must be stubbable in tests
-var exportables = {};
+}
 
 function address(addr) {
 	return [
@@ -282,6 +284,6 @@ exportables.flash = function (tessel, buffers) {
 	});
 };
 
-if (global.IS_TEST_ENV) {
-	module.exports = exportables;
-}
+export { exportables };
+// For backwards compatibility with tests
+export default exportables;

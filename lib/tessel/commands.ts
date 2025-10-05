@@ -20,7 +20,7 @@ function flatten() {
 	return result;
 }
 
-module.exports = {
+const commands = {
 	/**
 	 * Application specific deployment commands
 	 *
@@ -247,3 +247,5 @@ module.exports = {
 		];
 	},
 };
+
+export default commands;

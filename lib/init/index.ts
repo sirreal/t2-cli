@@ -1,16 +1,18 @@
-'use strict';
-
 // System Objects
-var path = require('path');
+import * as path from 'node:path';
 
 // Third Party Dependencies
 
 // Internal
-var log = require('../log.ts');
+import * as log from '../log.ts';
+import * as javascript from './javascript.ts';
+import * as rust from './rust.ts';
+import * as python from './python.ts';
+
 var languages = {
-	js: require('./javascript.ts'),
-	rs: require('./rust.ts'),
-	py: require('./python.ts'),
+	js: javascript,
+	rs: rust,
+	py: python,
 };
 
 var exportables = {};
@@ -63,4 +65,5 @@ exportables.resolveLanguage = (input) => {
 	return null;
 };
 
-module.exports = Object.assign(exportables, languages);
+export default Object.assign(exportables, languages);
+export { exportables, languages };

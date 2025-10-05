@@ -1,8 +1,8 @@
 // System Objects
-const path = require('path');
+import * as path from 'node:path';
 
 // Third Party Dependencies
-const colors = require('colors');
+import colors from 'colors';
 
 /*
   Constructor function for Tessel objects
@@ -145,15 +145,27 @@ Tessel.REMOTE_RUN_PATH = path.posix.join(
 	Tessel.REMOTE_SCRIPT_PATH,
 );
 
-module.exports = Tessel;
+export default Tessel;
 
-require('./access-point.ts');
-require('./deploy.ts');
-require('./erase.ts');
-require('./name.ts');
-require('./provision.ts');
-require('./update.ts');
-require('./version.ts');
-require('./wifi.ts');
-require('./restore.ts');
-require('./reboot.ts');
+// Register methods from other modules
+import { registerMethods as registerAccessPointMethods } from './access-point.ts';
+import { registerMethods as registerDeployMethods } from './deploy.ts';
+import { registerMethods as registerEraseMethods } from './erase.ts';
+import { registerMethods as registerNameMethods } from './name.ts';
+import { registerMethods as registerProvisionMethods } from './provision.ts';
+import { registerMethods as registerRebootMethods } from './reboot.ts';
+import { registerMethods as registerRestoreMethods } from './restore.ts';
+import { registerMethods as registerUpdateMethods } from './update.ts';
+import { registerMethods as registerVersionMethods } from './version.ts';
+import { registerMethods as registerWifiMethods } from './wifi.ts';
+
+registerAccessPointMethods(Tessel);
+registerDeployMethods(Tessel);
+registerEraseMethods(Tessel);
+registerNameMethods(Tessel);
+registerProvisionMethods(Tessel);
+registerRebootMethods(Tessel);
+registerRestoreMethods(Tessel);
+registerUpdateMethods(Tessel);
+registerVersionMethods(Tessel);
+registerWifiMethods(Tessel);

@@ -1,14 +1,20 @@
 // System Objects
-const path = require('path');
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
 
 // Third Party Dependencies
-const fs = require('fs-extra');
-const PZ = require('promzard').PromZard;
-const NPM = require('npm');
+import fs from 'fs-extra';
+import promzard from 'promzard';
+const PZ = promzard.PromZard;
+import NPM from 'npm';
 
 // Internal
-const log = require('../log.ts');
-const glob = require('../tessel/deployment/glob.ts');
+import * as log from '../log.ts';
+import * as glob from '../tessel/deployment/glob.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 let pkg, ctx, options;
 let packageJson = path.resolve('./package.json');
@@ -79,19 +85,26 @@ exportables.buildJSON = (npmConfig) => {
 };
 
 // Returns the dependencies of the package.json file
-exportables.getDependencies = (pkg) => {
+exportables.getDependencies = async (pkg) => {
 	// Let's find the dependencies that were installed
 	// by the author...
 	const dependencies = new Set();
 	const packageFiles = glob.sync('node_modules/*/package.json');
-	const authorInstalledDependencies = packageFiles.reduce((accum, file) => {
-		const content = require(path.join(process.cwd(), file));
-
-		if (content._requiredBy && content._requiredBy.includes('#USER')) {
-			accum[content.name] = content.version;
-		}
-		return accum;
-	}, {});
+	const authorInstalledDependencies = await Promise.all(
+		packageFiles.map(async (file) => {
+			const filePath = path.join(process.cwd(), file);
+			const content = JSON.parse(await fs.readFile(filePath, 'utf8'));
+			if (content._requiredBy && content._requiredBy.includes('#USER')) {
+				return { name: content.name, version: content.version };
+			}
+			return null;
+		})
+	).then((results) =>
+		results.filter(Boolean).reduce((accum, item) => {
+			accum[item.name] = item.version;
+			return accum;
+		}, {})
+	);
 
 	if (typeof pkg.dependencies === 'undefined') {
 		pkg.dependencies = [];
@@ -257,4 +270,4 @@ exportables.generateProject = (opts) => {
 		});
 };
 
-module.exports = exportables;
+export default exportables;

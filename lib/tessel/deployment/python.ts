@@ -1,16 +1,16 @@
 // System Objects
-var path = require('path');
+import * as path from 'node:path';
 
 // Third Party Dependencies
-var fs = require('fs-extra');
-var fsTemp = require('fs-temp');
-var Ignore = require('fstream-ignore');
-var tags = require('common-tags');
-var tar = require('tar');
+import * as fs from 'fs-extra';
+import fsTemp from 'fs-temp';
+import Ignore from 'fstream-ignore';
+import * as tags from 'common-tags';
+import * as tar from 'tar';
 
 // Internal
-var lists = require('./lists/python');
-var glob = require('./glob.ts');
+import lists from './lists/python.js';
+import * as glob from './glob.ts';
 
 var exportables = {
 	meta: {
@@ -150,4 +150,8 @@ exportables.tarBundle = function (opts) {
 	}
 };
 
-module.exports = exportables;
+export const meta = exportables.meta;
+export const preBundle = exportables.preBundle;
+export const tarBundle = exportables.tarBundle;
+export { lists };
+export default exportables;

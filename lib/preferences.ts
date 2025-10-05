@@ -1,12 +1,12 @@
 // System Objects
-var os = require('os');
-var path = require('path');
+import * as os from 'node:os';
+import * as path from 'node:path';
 
 // Third Party Dependencies
-var fs = require('fs-extra');
+import fs from 'fs-extra';
 
 // Internal
-var log = require('./log.ts');
+import * as log from './log.ts';
 
 var preferencesJson = path.join(os.homedir(), '.tessel', 'preferences.json');
 var Preferences = {};
@@ -74,4 +74,4 @@ Preferences.load = function () {
 	});
 };
 
-module.exports = Preferences;
+export default Preferences;

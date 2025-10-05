@@ -1,21 +1,23 @@
 // System Objects
-var fs = require('node:fs');
-var cp = require('node:child_process');
-var util = require('node:util');
+import * as fs from 'node:fs';
+import * as cp from 'node:child_process';
+import * as util from 'node:util';
 
 // Third Party Dependencies
-var async = require('async');
-var colors = require('colors');
-var semver = require('semver');
+import async from 'async';
+import colors from 'colors';
+import semver from 'semver';
 
 // Internal
-var init = require('./init/index.ts');
-var installer = require('./installer.ts');
-var log = require('./log.ts');
-var Menu = require('./menu.ts');
-var updates = require('./update-fetch.ts');
-var Tessel = require('./tessel/tessel.ts');
-var provision = require('./tessel/provision.ts');
+import * as init from './init/index.ts';
+import * as installer from './installer.ts';
+import * as log from './log.ts';
+import * as Menu from './menu.ts';
+import * as updates from './update-fetch.ts';
+import Tessel from './tessel/tessel.ts';
+import * as provision from './tessel/provision.ts';
+import * as discover from './discover.ts';
+import pkg from '../package.json' with { type: 'json' };
 
 var controller = {
 	// This will be assigned with the Tessel that is found or selected.
@@ -85,8 +87,6 @@ controller.setupLocal = function (opts) {
 };
 
 Tessel.list = function (opts) {
-	var discover = require('./discover.ts');
-
 	return new Promise((resolve, reject) => {
 		// Grab all attached Tessels
 		log.info('Searching for nearby Tessels...');
@@ -195,8 +195,6 @@ Tessel.list = function (opts) {
 };
 
 Tessel.get = function (options) {
-	var discover = require('./discover');
-
 	return new Promise((resolve, reject) => {
 		log.info('Looking for your Tessel...');
 		// Collection variable as more Tessels are found
@@ -1149,7 +1147,7 @@ controller.updateTesselWithVersion = function (
 controller.envVersions = (opts) => {
 	opts.authorized = true;
 
-	const cliVersion = require('../package.json').version;
+	const cliVersion = pkg.version;
 
 	return controller
 		.standardTesselCommand(opts, (tessel) => {
@@ -1221,9 +1219,13 @@ controller.uninstaller = function (options) {
 	return installer[options.operation](options);
 };
 
+// Add aliases for CLI compatibility
+controller.listTessels = controller.list;
+
 // Primary export
-module.exports = controller;
+export default controller;
 
 // Shared exports
-module.exports.listTessels = controller.list;
-module.exports.getTessel = controller.get;
+export const listTessels = controller.list;
+export const getTessel = controller.get;
+export { controller };

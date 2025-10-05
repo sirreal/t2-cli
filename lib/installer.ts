@@ -1,19 +1,22 @@
 #!/usr/bin/env node
 
-'use strict';
-
 // System Objects
-var child_process = require('child_process');
-var path = require('path');
+import * as child_process from 'node:child_process';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
 
 // Third Party Dependencies
-var fs = require('fs-extra');
-var osenv = require('osenv');
+import fs from 'fs-extra';
+import osenv from 'osenv';
 
 // Internal
-var log = require('./log.ts');
+import * as log from './log.ts';
 
-module.exports.drivers = function () {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+export function drivers() {
 	return new Promise((resolve, reject) => {
 		if (process.platform === 'linux') {
 			// --loglevel may be at "error" for npm postinstall script.
@@ -57,7 +60,7 @@ module.exports.drivers = function () {
 	});
 };
 
-module.exports.homedir = function () {
+export function homedir() {
 	var userTesselDirectory = path.join(osenv.home(), '.tessel');
 	var preferencesJson = path.join(userTesselDirectory, 'preferences.json');
 

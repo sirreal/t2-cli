@@ -6,7 +6,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-var assert = require('assert');
+import assert from 'node:assert';
 
 //           bRequest  bmRequestType wValue      wIndex      wLength     Data
 // var DFU_DETACH    = 0; // OUT        wTimeout    Interface   Zero        None
@@ -224,4 +224,4 @@ DFU.prototype.handleError = function (error, callback) {
 	}
 };
 
-module.exports = DFU;
+export default DFU;

@@ -3,7 +3,7 @@
 // Third Party Dependencies
 
 // Internal
-var log = require('../log.ts');
+import * as log from '../log.ts';
 
 var exportables = {};
 
@@ -17,4 +17,4 @@ exportables.generateProject = () => {
 	);
 };
 
-module.exports = exportables;
+export default exportables;

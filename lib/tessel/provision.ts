@@ -1,20 +1,20 @@
 //creates a .tessel folder with ssh keys in your home directory and uses those ssh keys to authorize you to push code to the USB-connected Tessel
 
 // System Objects
-var path = require('path');
-var util = require('util');
+import * as path from 'node:path';
+import * as util from 'node:util';
 
 // Third Party Dependencies
-var async = require('async');
-var fs = require('fs-extra');
-var osenv = require('osenv');
-var sshpk = require('sshpk');
+import async from 'async';
+import * as fs from 'fs-extra';
+import osenv from 'osenv';
+import * as sshpk from 'sshpk';
 
 // Internal
-var commands = require('./commands.ts');
-var log = require('../log.ts');
-var RSA = require('./rsa-delegation.ts');
-var Tessel = require('./tessel.ts');
+import * as commands from './commands.ts';
+import * as log from '../log.ts';
+import RSA from './rsa-delegation.ts';
+import Tessel from './tessel.ts';
 
 var authPath = path.join(osenv.home(), '.tessel');
 var idrsa = 'id_rsa';
@@ -22,6 +22,7 @@ var authKey = path.join(authPath, idrsa);
 var remoteAuthFile = '/etc/dropbear/authorized_keys';
 var configurable = true;
 
+export function registerMethods(Tessel) {
 Object.defineProperty(Tessel, 'LOCAL_AUTH_KEY', {
 	configurable,
 	get: function () {
@@ -66,6 +67,7 @@ Tessel.prototype.provision = function () {
 		});
 	});
 };
+}
 
 var actions = {};
 
@@ -231,4 +233,4 @@ function AlreadyAuthenticatedError() {
 util.inherits(AlreadyAuthenticatedError, Error);
 
 actions.AlreadyAuthenticatedError = AlreadyAuthenticatedError;
-module.exports = actions;
+export default actions;

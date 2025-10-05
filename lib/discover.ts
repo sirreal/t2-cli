@@ -1,17 +1,17 @@
 // System Objects
-var events = require('events');
-var util = require('util');
+import { EventEmitter } from 'node:events';
+import { inherits } from 'node:util';
 
-var Emitter = events.EventEmitter;
+var Emitter = EventEmitter;
 
 // Third Party Dependencies
 // ...
 
 // Internal
-var lan = require('./lan-connection.ts');
-var log = require('./log.ts');
-var Tessel = require('./tessel/tessel.ts');
-var usb = require('./usb-connection.ts');
+import * as lan from './lan-connection.ts';
+import * as log from './log.ts';
+import Tessel from './tessel/tessel.ts';
+import * as usb from './usb-connection.ts';
 
 function debug(message) {
 	log.debug(`(discovery) ${message}`);
@@ -24,7 +24,7 @@ function TesselSeeker() {
 	this.scanTimeout = undefined;
 }
 
-util.inherits(TesselSeeker, Emitter);
+inherits(TesselSeeker, Emitter);
 
 TesselSeeker.prototype.start = function (opts) {
 	// Initialize the opts if it wasn't provided
@@ -142,4 +142,4 @@ TesselSeeker.prototype.stop = function () {
 	return this;
 };
 
-module.exports.TesselSeeker = TesselSeeker;
+export { TesselSeeker };

@@ -5,9 +5,8 @@
 // ...
 
 // Internal
-var commands = require('./commands.ts');
-var log = require('../log.ts');
-var Tessel = require('./tessel.ts');
+import * as commands from './commands.ts';
+import * as log from '../log.ts';
 
 function commitAndClose(tessel, status, resolve, reject) {
 	var reconnectWifi = () => tessel.simpleExec(commands.reconnectWifi());
@@ -20,6 +19,7 @@ function commitAndClose(tessel, status, resolve, reject) {
 		.catch(reject);
 }
 
+export function registerMethods(Tessel) {
 Tessel.prototype.enableAccessPoint = function () {
 	var status = 'Access Point successfully enabled.';
 
@@ -173,3 +173,4 @@ Tessel.prototype.createAccessPoint = function (opts) {
 				.then(setupAccessPoint);
 		});
 };
+}

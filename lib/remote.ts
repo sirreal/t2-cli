@@ -1,4 +1,4 @@
-var dns = require('dns');
+import * as dns from 'node:dns';
 
 const remote = {
 	CRASH_REPORTER_HOSTNAME: 'crash-reporter.tessel.io',
@@ -19,4 +19,4 @@ const remote = {
 	},
 };
 
-module.exports = remote;
+export default remote;

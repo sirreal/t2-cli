@@ -2,15 +2,16 @@
 // ...
 
 // Third Party Dependencies
-const colors = require('colors');
+import colors from 'colors';
 
 // Internal
-var commands = require('./commands.ts');
-var log = require('../log.ts');
-var Tessel = require('./tessel.ts');
+import * as commands from './commands.ts';
+import * as log from '../log.ts';
+import Tessel from './tessel.ts';
 
 var defaultNamePrefix = 'Tessel-';
 
+export function registerMethods(Tessel) {
 Tessel.isValidName = function (value) {
 	// Regex to test whether a string is a valid Linux hostname
 	// http://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
@@ -114,3 +115,4 @@ Tessel.prototype.getMACAddress = function () {
 		},
 	);
 };
+}

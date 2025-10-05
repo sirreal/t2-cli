@@ -5,10 +5,11 @@
 // ...
 
 // Internal
-var commands = require('./commands.ts');
-var log = require('../log.ts');
-var Tessel = require('./tessel.ts');
+import * as commands from './commands.ts';
+import * as log from '../log.ts';
+import Tessel from './tessel.ts';
 
+export function registerMethods(Tessel) {
 Tessel.prototype.eraseScript = function () {
 	log.info('Erasing files from Flash...');
 	return this.simpleExec(commands.app.stop())
@@ -33,3 +34,4 @@ Tessel.prototype.eraseScript = function () {
 			}
 		});
 };
+}

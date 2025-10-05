@@ -1,43 +1,46 @@
 'use strict';
 
 // System Objects
-var cp = require('child_process');
-var path = require('path');
-var StringDecoder = require('string_decoder').StringDecoder;
-var zlib = require('zlib');
+import * as cp from 'node:child_process';
+import * as path from 'node:path';
+import { StringDecoder } from 'node:string_decoder';
+import * as zlib from 'node:zlib';
 
 // Third Party Dependencies
-var bindings = require('bindings');
-var fs = require('fs-extra');
-var fsTemp = require('fs-temp');
-var Ignore = require('fstream-ignore');
-var minimatch = require('minimatch');
-var Project = require('t2-project');
-var Reader = require('fstream').Reader;
-var request = require('request');
-var tags = require('common-tags');
-var tar = require('tar');
-var urljoin = require('url-join');
+import bindings from 'bindings';
+import * as fs from 'fs-extra';
+import fsTemp from 'fs-temp';
+import Ignore from 'fstream-ignore';
+import minimatch from 'minimatch';
+import Project from 't2-project';
+import { Reader } from 'fstream';
+import request from 'request';
+import * as tags from 'common-tags';
+import * as tar from 'tar';
+import urljoin from 'url-join';
+import * as uglifyEs from 'uglify-es';
+import * as uglifyJs from 'uglify-js';
+
 var uglify = {
-	es: require('uglify-es'),
-	js: require('uglify-js'),
+	es: uglifyEs,
+	js: uglifyJs,
 };
 
 // Internal
-var glob = require('./glob.ts');
-var lists = require('./lists/javascript.js');
-var log = require('../../log.ts');
+import * as glob from './glob.ts';
+import lists from './lists/javascript.js';
+import * as log from '../../log.ts';
 // Necessary to ensure that the next line has had the LOCAL_AUTH_PATH descriptor added.
-var provision = require('../provision.ts'); // jshint ignore:line
-var remote = require('../../remote.ts');
-var Tessel = require('../tessel.ts');
+import '../provision.ts';
+import * as remote from '../../remote.ts';
+import Tessel from '../tessel.ts';
 // Temporarily deactivating the code that used this internal dep
 // var updates = require('../../update-fetch');
 
 var binaryModulesUsed = new Map();
 
 const BINARY_SERVER_ROOT = `http://${remote.PACKAGES_HOSTNAME}/npm/`;
-const BINARY_CACHE_PATH = path.join(Tessel.LOCAL_AUTH_PATH, 'binaries');
+const getBinaryCachePath = () => path.join(Tessel.LOCAL_AUTH_PATH, 'binaries');
 
 var exportables = {
 	meta: {
@@ -266,7 +269,7 @@ exportables.resolveBinaryModules = function (options) {
 				// Store the name of the path where this might already
 				// be cached, but will most certainly be cached once
 				// it has been resolved.
-				details.extractPath = path.join(BINARY_CACHE_PATH, full);
+				details.extractPath = path.join(getBinaryCachePath(), full);
 
 				// Sometimes a module will depend on other
 				// modules that in turn depend on the same modules
@@ -946,4 +949,11 @@ const defaultUOptions = {
 		},
 	},
 };
-module.exports = exportables;
+
+export const meta = exportables.meta;
+export const preBundle = exportables.preBundle;
+export const tarBundle = exportables.tarBundle;
+export const preRun = exportables.preRun;
+export const postRun = exportables.postRun;
+export { lists };
+export default exportables;

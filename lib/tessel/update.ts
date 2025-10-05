@@ -1,19 +1,20 @@
 // System Objects
-var path = require('path');
-var fs = require('fs');
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 
 // Third Party Dependencies
 // ...
 
 // Internal
-var commands = require('./commands.ts');
-var log = require('../log.ts');
-var Tessel = require('./tessel.ts');
-var updates = require('../update-fetch.ts');
+import * as commands from './commands.ts';
+import * as log from '../log.ts';
+import Tessel from './tessel.ts';
+import * as updates from '../update-fetch.ts';
 
 var updatePath = `/tmp/${updates.OPENWRT_BINARY_FILE}`;
 var remoteVersioningFile = '/etc/tessel-version';
 
+export function registerMethods(Tessel) {
 /*
   Gathers openWRT and SAMD21 Firmware
   image information.
@@ -206,3 +207,4 @@ Tessel.prototype.fixOldUpdateScripts = function () {
 };
 
 Tessel.openWRTUpdateTime = 120 * 1000;
+}

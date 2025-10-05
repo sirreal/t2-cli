@@ -5,8 +5,9 @@
 // ...
 
 // Internal
-var Tessel = require('./tessel.ts');
+import Tessel from './tessel.ts';
 
+export function registerMethods(Tessel) {
 /*
   Gathers node version.
 */
@@ -24,3 +25,4 @@ Tessel.prototype.fetchNodeProcessVersions = function () {
 		'JSON.stringify(process.versions)',
 	]).then((versions) => JSON.parse(versions.trim()));
 };
+}

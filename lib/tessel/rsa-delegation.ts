@@ -1,5 +1,7 @@
+import NodeRSA from 'node-rsa';
+
 function MockRSA() {}
 
 MockRSA.prototype.exportKey = function () {};
 
-module.exports = global.IS_TEST_ENV ? MockRSA : require('node-rsa');
+export default global.IS_TEST_ENV ? MockRSA : NodeRSA;

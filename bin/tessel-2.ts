@@ -1,21 +1,22 @@
 #!/usr/bin/env node --force-node-api-uncaught-exceptions-policy=true --experimental-transform-types
 
 // System Objects
-//...
+import { fileURLToPath } from 'node:url';
 
 // Third Party Dependencies
-var parser = require('nomnom').script('t2');
-const isRoot = require('is-root');
+import nomnom from 'nomnom';
+var parser = nomnom.script('t2');
+import isRoot from 'is-root';
 
 // Internal
-var controller = require('../lib/controller.ts');
-var log = require('../lib/log.ts');
-var Preferences = require('../lib/preferences.ts');
+import controller from '../lib/controller.ts';
+import * as log from '../lib/log.ts';
+import Preferences from '../lib/preferences.ts';
 
 const CLI_ENTRYPOINT = 'cli.entrypoint';
 
 // Check for updates
-const pkg = require('../package.json');
+import pkg from '../package.json' with { type: 'json' };
 
 const flag = true;
 const hidden = true;
@@ -69,8 +70,8 @@ function makeCommand(commandName) {
 function callControllerWith(methodName, options) {
 	log.spinner.start();
 	return controller[methodName](options).then(
-		module.exports.closeSuccessfulCommand,
-		module.exports.closeFailedCommand,
+		closeSuccessfulCommand,
+		closeFailedCommand,
 	);
 }
 
@@ -147,7 +148,7 @@ makeCommand('restart')
 
 		// 1. Check that the type is a valid type
 		if (options.type !== 'ram' && options.type !== 'flash') {
-			return module.exports.closeFailedCommand('--type Invalid ');
+			return closeFailedCommand('--type Invalid ');
 		}
 
 		// 2. If an entry point file wasn't specified, get the last
@@ -159,7 +160,7 @@ makeCommand('restart')
 				} else {
 					// 3. However, if that doesn't exist either,
 					//    there is nothing further to do.
-					return module.exports.closeFailedCommand(
+					return closeFailedCommand(
 						'Cannot determine entry point file name',
 					);
 				}
@@ -555,7 +556,7 @@ makeCommand('root')
 	})
 	.help('Gain SSH root access to one of your authorized tessels');
 
-module.exports = function (args) {
+function main(args) {
 	var sIndexOfSA = -1;
 	var eIndexOfSA = -1;
 
@@ -626,15 +627,15 @@ module.exports = function (args) {
 	// only necessary for testing the CLI (each call must be "fresh")
 	parser.specs = {};
 	parser.parse(args);
-};
+}
 
-module.exports.closeSuccessfulCommand = function () {
+export function closeSuccessfulCommand() {
 	log.spinner.stop();
 	process.exit(0);
-};
+}
 
 // Allow options to be partially applied
-module.exports.closeFailedCommand = function (status, options = {}) {
+export function closeFailedCommand(status, options = {}) {
 	var code = 1;
 
 	if (status instanceof Error) {
@@ -650,8 +651,13 @@ module.exports.closeFailedCommand = function (status, options = {}) {
 
 	log.spinner.stop();
 	process.exit(options.code || (status && status.code) || code);
-};
-
-if (require.main === module) {
-	module.exports(process.argv.slice(2));
 }
+
+// For ESM, we need to check if this module is the entry point
+const __filename = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === __filename) {
+	main(process.argv.slice(2));
+}
+
+export default main;

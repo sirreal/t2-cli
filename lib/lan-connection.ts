@@ -1,20 +1,20 @@
 // System Objects
-var events = require('events');
-var util = require('util');
+import { EventEmitter } from 'node:events';
+import { inherits } from 'node:util';
 
-var Emitter = events.EventEmitter;
+var Emitter = EventEmitter;
 
 // Third Party Dependencies
 // ...
 
-var fs = require('fs-extra');
-var mdns = require('mdns-js');
-var shellescape = require('shell-escape');
-var ssh = require('ssh2');
+import fs from 'fs-extra';
+import mdns from 'mdns-js';
+import shellescape from 'shell-escape';
+import ssh from 'ssh2';
 
 // Internal
-var log = require('./log.ts');
-var Tessel = require('./tessel/tessel.ts');
+import * as log from './log.ts';
+import Tessel from './tessel/tessel.ts';
 
 //if you have another mdns daemon running, like avahi or bonjour, uncomment following line
 mdns.excludeInterface('0.0.0.0');
@@ -168,7 +168,7 @@ LAN.Scanner = function () {
 	this.discovered = [];
 };
 
-util.inherits(LAN.Scanner, Emitter);
+inherits(LAN.Scanner, Emitter);
 
 LAN.Scanner.prototype.start = function () {
 	setImmediate(() => {
@@ -210,11 +210,6 @@ LAN.Scanner.prototype.stop = function () {
 	}
 };
 
-module.exports.startScan = startScan;
-module.exports.stopScan = stopScan;
+export { startScan, stopScan, LAN };
 // Exported for CLI API Consumers
-module.exports.LANConnection = LAN.Connection;
-
-if (global.IS_TEST_ENV) {
-	module.exports.LAN = LAN;
-}
+export const LANConnection = LAN.Connection;

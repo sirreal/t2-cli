@@ -1,26 +1,26 @@
 // System Objects
-var path = require('path');
-var cp = require('child_process');
-var stream = require('stream');
-var zlib = require('zlib');
+import * as path from 'node:path';
+import * as cp from 'node:child_process';
+import * as stream from 'node:stream';
+import * as zlib from 'node:zlib';
 
 var Transform = stream.Transform;
 
 // Third Party Dependencies
-var blocks = require('block-stream2');
-var bz2 = require('unbzip2-stream');
-var createHash = require('sha.js');
-var fs = require('fs-extra');
-var fsTemp = require('fs-temp');
-var osenv = require('osenv');
-var Progress = require('t2-progress');
-var request = require('request');
-var tags = require('common-tags');
-var tar = require('tar-fs');
+import blocks from 'block-stream2';
+import bz2 from 'unbzip2-stream';
+import createHash from 'sha.js';
+import * as fs from 'fs-extra';
+import fsTemp from 'fs-temp';
+import osenv from 'osenv';
+import Progress from 't2-progress';
+import request from 'request';
+import * as tags from 'common-tags';
+import * as tar from 'tar-fs';
 
 // Internal
-var log = require('../log.ts');
-var remote = require('../remote.ts');
+import * as log from '../log.ts';
+import * as remote from '../remote.ts';
 
 const SDK_PATHS = {
 	sdk: path.join(osenv.home(), '.tessel/sdk'),
@@ -142,7 +142,7 @@ function tmpdir() {
 }
 
 /* istanbul ignore next */
-module.exports.toolchainPath = () => {
+export function toolchainPath() {
 	return new Promise((resolve, reject) => {
 		var sdkPlatformPath = path.join(SDK_PATHS.sdk, getPlatform());
 		var values = fs.readdirSync(sdkPlatformPath);
@@ -159,7 +159,7 @@ module.exports.toolchainPath = () => {
 // Checks if CHECKSUM file in our SDK equals our expected checksum.
 // This will resolve with checking that the SDK exists and matches the checksum.
 /* istanbul ignore next */
-module.exports.checkTools = (checksumVerify) => {
+export function checkTools(checksumVerify) {
 	var dir = path.join(SDK_PATHS.sdk, getPlatform());
 	return new Promise((resolve) => {
 		var checksum = fs.readFileSync(path.join(dir, 'CHECKSUM'), 'utf-8');
@@ -176,7 +176,7 @@ module.exports.checkTools = (checksumVerify) => {
 };
 
 /* istanbul ignore next */
-module.exports.checkRustlib = (rustv, checksumVerify) => {
+export function checkRustlib(rustv, checksumVerify) {
 	var dir = path.join(SDK_PATHS.rustlib, rustv);
 	return new Promise((resolve) => {
 		var checksum = fs.readFileSync(path.join(dir, 'CHECKSUM'), 'utf-8');
@@ -193,7 +193,7 @@ module.exports.checkRustlib = (rustv, checksumVerify) => {
 };
 
 /* istanbul ignore next */
-module.exports.installTools = () => {
+export function installTools() {
 	var pkgname = 'Tessel build tools';
 	var url = SDK_URLS[getPlatform()];
 	var checksumVerify = null;
@@ -202,7 +202,7 @@ module.exports.installTools = () => {
 		return downloadString(`${url}.sha256`)
 			.then((checksum) => {
 				checksumVerify = checksum;
-				return exports.checkTools(checksumVerify);
+				return checkTools(checksumVerify);
 			})
 			.then((check) => {
 				if (check.exists && check.isVerified) {
@@ -221,8 +221,8 @@ module.exports.installTools = () => {
 };
 
 /* istanbul ignore next */
-module.exports.installRustlib = () => {
-	return exports.rustVersion().then((rustv) => {
+export function installRustlib() {
+	return rustVersion().then((rustv) => {
 		var pkgname = `MIPS libstd v${rustv}`;
 		var url = `https://${remote.BUILDS_HOSTNAME}/t2/sdk/t2-rustlib-${rustv}.tar.gz`;
 		var checksumVerify;
@@ -235,7 +235,7 @@ module.exports.installRustlib = () => {
 			)
 			.then((checksum) => {
 				checksumVerify = checksum;
-				return exports.checkRustlib(rustv, checksumVerify);
+				return checkRustlib(rustv, checksumVerify);
 			})
 			.then((check) => {
 				if (check.exists && check.isVerified) {
@@ -367,7 +367,7 @@ function extractRustlib(checksumVerify, filename, sdkStream, rustVersion) {
 }
 
 /* istanbul ignore next */
-module.exports.getBuildConfig = () => {
+export function getBuildConfig() {
 	var config = {
 		rustv: null,
 		toolchainPath: null,
@@ -377,12 +377,11 @@ module.exports.getBuildConfig = () => {
 		path: null,
 	};
 
-	return exports
-		.rustVersion()
+	return rustVersion()
 		.then((rustv) => {
 			config.rustv = rustv;
 
-			return exports.checkTools();
+			return checkTools();
 		})
 		.then((check) => {
 			if (!check.exists) {
@@ -390,7 +389,7 @@ module.exports.getBuildConfig = () => {
 			}
 			config.stagingDir = check.path;
 
-			return exports.checkRustlib(config.rustv);
+			return checkRustlib(config.rustv);
 		})
 		.then((check) => {
 			if (!check.exists) {
@@ -398,7 +397,7 @@ module.exports.getBuildConfig = () => {
 			}
 			config.rustlibPath = check.path;
 
-			return exports.toolchainPath();
+			return toolchainPath();
 		})
 		.then((toolchainPath) => {
 			config.toolchainPath = toolchainPath;
@@ -411,7 +410,7 @@ module.exports.getBuildConfig = () => {
 // with the current rustc version, rejects if either executable is not found
 // on the system.
 /* istanbul ignore next */
-module.exports.rustVersion = () => {
+export function rustVersion() {
 	// Check that rustc exists and get its version.
 	return new Promise((resolve, reject) => {
 		var rustc = cp.spawn('rustc', ['-V']);
@@ -449,7 +448,7 @@ module.exports.rustVersion = () => {
 
 // Check the targets of a cargo crate.
 /* istanbul ignore next */
-module.exports.cargoMetadata = (destdir) => {
+export function cargoMetadata(destdir) {
 	return new Promise((resolve, reject) => {
 		var cargo = cp.spawn('cargo', ['metadata', '--no-deps'], {
 			stdio: ['ignore', 'pipe', 'inherit'],
@@ -473,7 +472,7 @@ module.exports.cargoMetadata = (destdir) => {
 };
 
 /* istanbul ignore next */
-module.exports.buildTessel = (config) => {
+export function buildTessel(config) {
 	var env = Object.assign({}, process.env, {
 		STAGING_DIR: config.stagingDir,
 		RUST_TARGET_PATH: config.rustlibPath,
@@ -507,7 +506,7 @@ module.exports.buildTessel = (config) => {
 };
 
 /* istanbul ignore next */
-module.exports.bundleTessel = (config) => {
+export function bundleTessel(config) {
 	return new Promise((resolve) => {
 		var tarball = path.join(path.dirname(config.path), 'tessel-bundle.tar');
 		tar
@@ -522,14 +521,14 @@ module.exports.bundleTessel = (config) => {
 };
 
 /* istanbul ignore next */
-module.exports.cargo = {
+export const cargo = {
 	install: () => {
-		exports.checkRust({
+		checkRust({
 			isCli: false,
 		});
 
-		return exports.installTools().then(() => {
-			return exports.installRustlib().then(
+		return installTools().then(() => {
+			return installRustlib().then(
 				() => {
 					log.info('SDK installed.');
 				},
@@ -559,8 +558,8 @@ module.exports.cargo = {
 
 // Logging function that checks if all rust components are installed.
 /* istanbul ignore next */
-module.exports.checkSdk = () => {
-	return exports.getBuildConfig().catch((error) =>
+export function checkSdk() {
+	return getBuildConfig().catch((error) =>
 		Promise.reject(tags.stripIndent`
       Could not find all the components for cross-compiling Rust:
       ${error.message}
@@ -570,8 +569,8 @@ module.exports.checkSdk = () => {
 };
 
 /* istanbul ignore next */
-module.exports.checkRust = (opts) => {
-	return exports.rustVersion().catch(() =>
+export function checkRust(opts) {
+	return rustVersion().catch(() =>
 		Promise.reject(tags.stripIndent`
         "rustc" and "cargo" are required to cross-compile for Tessel.
         Please install Rust on your machine: https://rustup.rs/
@@ -582,8 +581,8 @@ module.exports.checkRust = (opts) => {
 // Logging function that checks if rust is installed, then if the binary matches.
 // opts matches { isCli: boolean, binary: String[, path: String] }
 /* istanbul ignore next */
-module.exports.checkBinaryName = (opts) => {
-	return exports.cargoMetadata(opts.path).then((metadata) => {
+export function checkBinaryName(opts) {
+	return cargoMetadata(opts.path).then((metadata) => {
 		return new Promise((resolve, reject) => {
 			// Get first package.
 			var pkg = metadata.packages.pop();
@@ -634,20 +633,18 @@ module.exports.checkBinaryName = (opts) => {
 
 // opts matches { isCli: boolean, binary: String[, path: String] }
 /* istanbul ignore next */
-module.exports.runBuild = (opts) => {
-	return exports
-		.checkRust({
+export function runBuild(opts) {
+	return checkRust({
 			isCli: opts.isCli,
 		})
-		.then(() => exports.checkBinaryName(opts))
+		.then(() => checkBinaryName(opts))
 		.then((out) => {
-			return module.exports.checkSdk().then((config) => {
+			return checkSdk().then((config) => {
 				config.name = out.name;
 				config.path = out.path;
 
-				return exports
-					.buildTessel(config)
-					.then(() => exports.bundleTessel(config));
+				return buildTessel(config)
+					.then(() => bundleTessel(config));
 			});
 		});
 };

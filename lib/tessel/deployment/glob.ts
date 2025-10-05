@@ -1,9 +1,9 @@
 // System Objects
-var path = require('path');
+import * as path from 'node:path';
 
 // Third Party Dependencies
-var fs = require('fs-extra');
-var glob = require('glob');
+import fs from 'fs-extra';
+import glob from 'glob';
 
 var exportables = {
 	/*
@@ -104,4 +104,7 @@ var exportables = {
 	},
 };
 
-module.exports = exportables;
+export default exportables;
+export const sync = exportables.sync;
+export const rules = exportables.rules;
+export const files = exportables.files;

@@ -1,16 +1,21 @@
 // System Objects
-var os = require('os');
+import * as os from 'node:os';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Third Party Dependencies
-var request = require('request');
-var tags = require('common-tags');
+import request from 'request';
+import tags from 'common-tags';
 
 // Internal
-var log = require('./log.ts');
-var Menu = require('./menu');
-var packageJson = require('../package.json');
-var Preferences = require('./preferences');
-var remote = require('./remote');
+import * as log from './log.ts';
+import Menu from './menu.ts';
+import packageJson from '../package.json' with { type: 'json' };
+import Preferences from './preferences.ts';
+import remote from './remote.ts';
 
 // the value of the crash reporter preference
 // the value has to be one of 'on' or 'off'
@@ -232,4 +237,4 @@ if (!process.env.CI) {
 	process.on('uncaughtException', CrashReporter.onerror);
 }
 
-module.exports = CrashReporter;
+export default CrashReporter;

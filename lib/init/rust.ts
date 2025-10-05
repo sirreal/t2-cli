@@ -1,13 +1,18 @@
 // System Objects
-var cp = require('child_process');
-var path = require('path');
-var util = require('util');
+import * as cp from 'node:child_process';
+import * as path from 'node:path';
+import * as util from 'node:util';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
 
 // Third Party Dependencies
-var fs = require('fs-extra');
+import fs from 'fs-extra';
 
 // Internal
-var log = require('../log.ts');
+import * as log from '../log.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 var options;
 var resources = path.resolve(__dirname, './../../', 'resources/rust');
@@ -86,19 +91,20 @@ exportables.verifyCargoInstalled = () => {
 	});
 };
 
-function CargoExistsError(filepath) {
-	Error.captureStackTrace(this, this.constructor);
-	this.name = this.constructor.name;
-	this.message = `Cargo Project Exists at ${filepath}`;
+class CargoExistsError extends Error {
+	constructor(filepath) {
+		super(`Cargo Project Exists at ${filepath}`);
+		this.name = this.constructor.name;
+		Error.captureStackTrace(this, this.constructor);
+	}
 }
 
-function CreateError(filepath, error) {
-	Error.captureStackTrace(this, this.constructor);
-	this.name = this.constructor.name;
-	this.message = `Could not create ${filepath}; ${error.toString()}`;
+class CreateError extends Error {
+	constructor(filepath, error) {
+		super(`Could not create ${filepath}; ${error.toString()}`);
+		this.name = this.constructor.name;
+		Error.captureStackTrace(this, this.constructor);
+	}
 }
 
-util.inherits(CargoExistsError, Error);
-util.inherits(CreateError, Error);
-
-module.exports = exportables;
+export default exportables;

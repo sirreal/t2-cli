@@ -1,18 +1,18 @@
 // System Objects
-var os = require('os');
-var path = require('path');
+import * as os from 'node:os';
+import * as path from 'node:path';
 
 // Third Party Dependencies
-var fs = require('fs-extra');
+import * as fs from 'fs-extra';
 
 // Internal
-var commands = require('./commands.ts');
-var deployment = require('./deployment/index.ts');
-var log = require('../log.ts');
-var Preferences = require('../preferences.ts');
+import * as commands from './commands.ts';
+import * as deployment from './deployment/index.ts';
+import * as log from '../log.ts';
+import Preferences from '../preferences.ts';
 // Necessary to ensure that the next line has had the LOCAL_AUTH_PATH descriptor added.
-var provision = require('./provision.ts');
-var Tessel = require('./tessel.ts');
+import './provision.ts';
+import Tessel from './tessel.ts';
 
 // Used to store local functionality and allow
 // exporting those definitions for testing.
@@ -33,7 +33,7 @@ function transformKey(value) {
 }
 
 // Language: *
-const PUSH_START_SH_SCRIPT = path.posix.join(Tessel.REMOTE_APP_PATH, 'start');
+const getPushStartShScript = () => path.posix.join(Tessel.REMOTE_APP_PATH, 'start');
 const CLI_ENTRYPOINT = 'cli.entrypoint';
 
 /*
@@ -82,6 +82,7 @@ const CLI_ENTRYPOINT = 'cli.entrypoint';
   Note that the values are in BYTES!
 */
 
+export function registerMethods(Tessel) {
 /**
  * Retrieve memory information from a Tessel 2.
  * Language: *
@@ -468,7 +469,7 @@ exportables.createShellScript = function (tessel, opts) {
 	return new Promise((resolve, reject) => {
 		// Open a stdin pipe tp the file
 		tessel.connection.exec(
-			commands.openStdinToFile(PUSH_START_SH_SCRIPT),
+			commands.openStdinToFile(getPushStartShScript()),
 			(error, remoteProcess) => {
 				/* istanbul ignore if */
 				if (error) {
@@ -483,7 +484,7 @@ exportables.createShellScript = function (tessel, opts) {
 
 					// Set the perimissions on the file to be executable
 					tessel.connection.exec(
-						commands.chmod('+x', PUSH_START_SH_SCRIPT),
+						commands.chmod('+x', getPushStartShScript()),
 						(error, remoteProcess) => {
 							/* istanbul ignore if */
 							if (error) {
@@ -534,7 +535,8 @@ exportables.start = function (tessel, entryPoint) {
 			});
 		});
 };
-
-if (global.IS_TEST_ENV) {
-	module.exports = exportables;
 }
+
+export { exportables };
+// For backwards compatibility with tests
+export default exportables;

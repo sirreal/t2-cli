@@ -1,40 +1,42 @@
 // System Objects
-var path = require('path');
+import * as path from 'node:path';
 
 // Third Party Dependencies
-var fs = require('fs-extra');
+import * as fs from 'fs-extra';
+
+import * as js from './javascript.ts';
+import * as py from './python.ts';
+import * as rs from './rust.ts';
 
 var languages = {
-	js: require('./javascript.ts'),
-	py: require('./python.ts'),
-	rs: require('./rust.ts'),
+	js,
+	py,
+	rs,
 };
 
-var exportables = {
-	resolveLanguage: (input) => {
-		input = String(input).toLowerCase();
+export function resolveLanguage(input) {
+	input = String(input).toLowerCase();
 
-		var extname = path.extname(input).slice(1);
+	var extname = path.extname(input).slice(1);
 
-		for (var key in languages) {
-			var lang = languages[key];
-			var meta = lang.meta;
+	for (var key in languages) {
+		var lang = languages[key];
+		var meta = lang.meta;
 
-			if (
-				input === meta.name ||
-				input === meta.extname ||
-				extname === meta.name ||
-				extname === meta.extname
-			) {
+		if (
+			input === meta.name ||
+			input === meta.extname ||
+			extname === meta.name ||
+			extname === meta.extname
+		) {
+			return lang;
+		} else {
+			if (fs.existsSync(meta.configuration)) {
 				return lang;
-			} else {
-				if (fs.existsSync(meta.configuration)) {
-					return lang;
-				}
 			}
 		}
-		return null;
-	},
-};
+	}
+	return null;
+}
 
-module.exports = Object.assign(exportables, languages);
+export { js, py, rs };

@@ -7,10 +7,11 @@
 // ...
 
 // Internal
-var commands = require('./commands.ts');
-var log = require('../log.ts');
-var Tessel = require('./tessel.ts');
+import * as commands from './commands.ts';
+import * as log from '../log.ts';
+import Tessel from './tessel.ts';
 
+export function registerMethods(Tessel) {
 Tessel.prototype.findAvailableNetworks = function () {
 	var listed = {};
 
@@ -288,3 +289,4 @@ Tessel.prototype.setWiFiState = function (state) {
 			});
 	});
 };
+}

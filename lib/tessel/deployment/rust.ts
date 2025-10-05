@@ -1,23 +1,23 @@
 // System Objects
-var http = require('http');
-var querystring = require('querystring');
-var url = require('url');
+import * as http from 'node:http';
+import * as querystring from 'node:querystring';
+import * as url from 'node:url';
 
 // Third Party Dependencies
-var fs = require('fs-extra');
-var fstream = require('fstream');
-var tags = require('common-tags');
-var tar = require('tar');
+import * as fs from 'fs-extra';
+import * as fstream from 'fstream';
+import * as tags from 'common-tags';
+import * as tar from 'tar';
 
 var Reader = fstream.Reader;
 
 // Internal
-var commands = require('../commands.ts');
-var lists = require('./lists/rust');
-var log = require('../../log.ts');
-var remote = require('../../remote.ts');
-var rust = require('../../install/rust.ts');
-var Tessel = require('../tessel.ts');
+import * as commands from '../commands.ts';
+import lists from './lists/rust.js';
+import * as log from '../../log.ts';
+import * as remote from '../../remote.ts';
+import * as rust from '../../install/rust.ts';
+import Tessel from '../tessel.ts';
 
 var exportables = {
 	meta: {
@@ -208,4 +208,9 @@ exportables.remoteRustCompilation = (opts) => {
 	});
 };
 
-module.exports = exportables;
+export const meta = exportables.meta;
+export const preBundle = exportables.preBundle;
+export const tarBundle = exportables.tarBundle;
+export const preRun = exportables.preRun;
+export { lists };
+export default exportables;
