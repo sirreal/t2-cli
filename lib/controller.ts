@@ -85,7 +85,7 @@ controller.setupLocal = function (opts) {
 };
 
 Tessel.list = function (opts) {
-	var discover = require('./discover');
+	var discover = require('./discover.ts');
 
 	return new Promise((resolve, reject) => {
 		// Grab all attached Tessels

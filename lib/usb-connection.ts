@@ -12,7 +12,7 @@ var Emitter = events.EventEmitter;
 const tags = require('common-tags');
 
 // Internal
-var DFU = require('./dfu');
+var DFU = require('./dfu.ts');
 var log = require('./log.ts');
 
 function debug(message) {
@@ -48,7 +48,7 @@ try {
 	}
 }
 
-var Daemon = require('./usb/usb-daemon');
+var { daemon: Daemon } = require('./usb/usb-daemon.ts');
 
 var TESSEL_VID = 0x1209;
 var TESSEL_PID = 0x7551;

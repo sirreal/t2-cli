@@ -21,7 +21,7 @@ var MAX_DATA_PACKET_SIZE = 4092;
 var MAX_BUFFER_SIZE = 32768;
 
 // A process is running remotely on the Tessel and data is piped in over USB
-class USBProcess extends EventEmitter {
+export default class USBProcess extends EventEmitter {
 	/** The numerical identifer for this process */
 	id: unknown;
 
@@ -372,5 +372,3 @@ class RemoteReadableStream extends stream.Readable {
 		this.closed = true;
 	}
 }
-
-module.exports = USBProcess;

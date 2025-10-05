@@ -6,7 +6,7 @@ import async from 'async';
 import protocol from 'usb-daemon-parser';
 
 // Internal
-import { USBProcess } from './usb-process';
+import USBProcess from './usb-process.ts';
 
 var MAX_PROCESS_ID = 255;
 
@@ -29,10 +29,10 @@ class USBDaemon {
 	}
 
 	/** Register a connection with the daemon.
-  The daemon will monitor all USB traffic and parse
-  out packets. The daemon will interpret those parsed
-  packets to create, destroy, and modify processes
-  */
+	 * The daemon will monitor all USB traffic and parse
+	 * out packets. The daemon will interpret those parsed
+	 * packets to create, destroy, and modify processes
+	 */
 	register(connection): void {
 		// Create a connection entry for the Daemon table
 		// Includes data parser and processes hash
@@ -48,9 +48,10 @@ class USBDaemon {
 		this._startListening(entry);
 	}
 
-	/** Deregister a connection with the daemon. This will
-  close all existing connections locally and remotely.
-  */
+	/**
+	 * Deregister a connection with the daemon. This will
+	 * close all existing connections locally and remotely.
+	 */
 	deregister(connection, callback) {
 		// Find the Daemon table entry for this connection
 		var entry = this.getEntryForConnection(connection);
