@@ -69,8 +69,6 @@ function makeCommand(commandName) {
 
 function callControllerWith(methodName, options) {
 	log.spinner.start();
-    console.log(controller);
-    console.log(methodName);
 
 	return controller[methodName](options).then(
 		closeSuccessfulCommand,

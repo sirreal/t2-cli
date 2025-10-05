@@ -25,7 +25,6 @@ export const createNewProject = (options) => {
 
 	// Detect the requested language
 	var lang = resolveLanguage(options.lang);
-    console.log(lang);
 
 	// If a language could not be detected
 	if (lang === null) {
