@@ -4,7 +4,7 @@ import * as path from 'node:path';
 
 // Third Party Dependencies
 import * as fs from 'node:fs';
-import * as fsExtra from 'fs-extra';
+import * as fsExtra from 'fs-extra/esm';
 
 // Internal
 import * as log from './log.ts';

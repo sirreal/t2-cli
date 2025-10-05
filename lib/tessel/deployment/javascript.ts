@@ -9,7 +9,7 @@ import * as zlib from 'node:zlib';
 // Third Party Dependencies
 import bindings from 'bindings';
 import * as fs from 'node:fs';
-import * as fsExtra from 'fs-extra';
+import * as fsExtra from 'fs-extra/esm';
 import fsTemp from 'fs-temp';
 import Ignore from 'fstream-ignore';
 import minimatch from 'minimatch';

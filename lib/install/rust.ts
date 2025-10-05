@@ -11,7 +11,7 @@ import blocks from 'block-stream2';
 import bz2 from 'unbzip2-stream';
 import createHash from 'sha.js';
 import * as fs from 'node:fs';
-import * as fsExtra from 'fs-extra';
+import * as fsExtra from 'fs-extra/esm';
 import fsTemp from 'fs-temp';
 import osenv from 'osenv';
 import Progress from 't2-progress';

@@ -5,7 +5,7 @@ import { dirname } from 'node:path';
 
 // Third Party Dependencies
 import * as fs from 'node:fs';
-import * as fsExtra from 'fs-extra';
+import * as fsExtra from 'fs-extra/esm';
 import promzard from 'promzard';
 const PZ = promzard.PromZard;
 import NPM from 'npm';

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 
 // Third Party Dependencies
-import * as fsExtra from 'fs-extra';
+import * as fsExtra from 'fs-extra/esm';
 import osenv from 'osenv';
 
 // Internal

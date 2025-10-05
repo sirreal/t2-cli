@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 
 // Third Party Dependencies
-import fsExtra from 'fs-extra';
+import fs from 'node:fs';
+import fsExtra from 'fs-extra/esm';
 
 // Internal
 import * as log from '../log.ts';
@@ -41,15 +42,15 @@ exportables.createSampleProgram = () => {
 		var dirAndMainRs = path.resolve(srcDir, mainRs);
 
 		// Generate the toml and the src file
-		fsExtra.exists(srcDir, (exists) => {
+		fs.exists(srcDir, (exists) => {
 			if (exists) {
 				return reject(new CargoExistsError(srcDir));
 			}
-			fsExtra.exists(dirAndCargoToml, (exists) => {
+			fs.exists(dirAndCargoToml, (exists) => {
 				if (exists) {
 					return reject(new CargoExistsError(dirAndCargoToml));
 				}
-				fsExtra.mkdir(srcDir, (error) => {
+				fs.mkdir(srcDir, (error) => {
 					if (error) {
 						return reject(new CreateError(srcDir, error));
 					}

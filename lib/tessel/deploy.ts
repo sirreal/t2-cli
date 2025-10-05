@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 // Third Party Dependencies
-import * as fs from 'fs-extra';
+import * as fs from 'node:fs';
 
 // Internal
 import * as commands from './commands.ts';
