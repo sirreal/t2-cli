@@ -33,7 +33,8 @@ function transformKey(value) {
 }
 
 // Language: *
-const getPushStartShScript = () => path.posix.join(Tessel.REMOTE_APP_PATH, 'start');
+const getPushStartShScript = () =>
+	path.posix.join(Tessel.REMOTE_APP_PATH, 'start');
 const CLI_ENTRYPOINT = 'cli.entrypoint';
 
 /*
@@ -83,458 +84,468 @@ const CLI_ENTRYPOINT = 'cli.entrypoint';
 */
 
 export function registerMethods(Tessel) {
-/**
- * Retrieve memory information from a Tessel 2.
- * Language: *
- *
- * @return {Promise}
- */
-Tessel.prototype.memoryInfo = function () {
-	return new Promise((resolve, reject) => {
-		return this.simpleExec(commands.getMemoryInfo())
-			.then((response) => {
-				if (!response || !response.length) {
-					return reject('Could not read device memory information.');
-				}
-
-				var meminfo = response.split('\n').reduce((result, row) => {
-					var parts = row.match(rMemoryRow);
-					var key, value;
-
-					if (parts && parts.length) {
-						key = transformKey(parts[1]);
-						value = parseInt(parts[2], 10) * 1000;
-						result[key] = value;
+	/**
+	 * Retrieve memory information from a Tessel 2.
+	 * Language: *
+	 *
+	 * @return {Promise}
+	 */
+	Tessel.prototype.memoryInfo = function () {
+		return new Promise((resolve, reject) => {
+			return this.simpleExec(commands.getMemoryInfo())
+				.then((response) => {
+					if (!response || !response.length) {
+						return reject('Could not read device memory information.');
 					}
-					return result;
-				}, {});
 
-				resolve(meminfo);
-			})
-			.catch(reject);
-	});
-};
-/**
- * Deploy project to a Tessel 2.
- * Language: *
- *
- * @return {Promise}
- */
-Tessel.prototype.deploy = function (opts) {
-	/* istanbul ignore else */
-	if (typeof opts.tessel === 'undefined') {
-		opts.tessel = this;
-	}
+					var meminfo = response.split('\n').reduce((result, row) => {
+						var parts = row.match(rMemoryRow);
+						var key, value;
 
-	// Only an _explicit_ `true` will set push mode
-	var isPush = opts.push === true;
-	var entryPoint = opts.entryPoint;
+						if (parts && parts.length) {
+							key = transformKey(parts[1]);
+							value = parseInt(parts[2], 10) * 1000;
+							result[key] = value;
+						}
+						return result;
+					}, {});
 
-	// Resolve the application's language/runtime
-	opts.lang = deployment.resolveLanguage(opts.lang || opts.entryPoint);
-	opts.binopts = opts.binopts || [];
-	opts.subargs = opts.subargs || [];
+					resolve(meminfo);
+				})
+				.catch(reject);
+		});
+	};
+	/**
+	 * Deploy project to a Tessel 2.
+	 * Language: *
+	 *
+	 * @return {Promise}
+	 */
+	Tessel.prototype.deploy = function (opts) {
+		/* istanbul ignore else */
+		if (typeof opts.tessel === 'undefined') {
+			opts.tessel = this;
+		}
 
-	return new Promise((resolve, reject) => {
-		// Stop running an existing applications
-		return this.simpleExec(commands.app.stop())
-			.catch((error) => {
-				// This _must_ be inline
-				/* istanbul ignore else */
-				if (error.length > 0) {
-					throw new Error(
-						`Remote command: ${commands.app.stop().join(' ')} failed.`,
-					);
-				}
-			})
-			.then(() => {
-				var prom;
+		// Only an _explicit_ `true` will set push mode
+		var isPush = opts.push === true;
+		var entryPoint = opts.entryPoint;
 
-				if (opts.single) {
-					// Always be sure the appropriate dir is created
-					prom = this.simpleExec(commands.createFolder(Tessel.REMOTE_RUN_PATH));
-				} else {
-					// Delete any code that was previously at this file path
-					prom = this.simpleExec(commands.deleteFolder(Tessel.REMOTE_RUN_PATH));
-					// Create the folder again
-					prom = prom.then(() => {
-						return this.simpleExec(
+		// Resolve the application's language/runtime
+		opts.lang = deployment.resolveLanguage(opts.lang || opts.entryPoint);
+		opts.binopts = opts.binopts || [];
+		opts.subargs = opts.subargs || [];
+
+		return new Promise((resolve, reject) => {
+			// Stop running an existing applications
+			return this.simpleExec(commands.app.stop())
+				.catch((error) => {
+					// This _must_ be inline
+					/* istanbul ignore else */
+					if (error.length > 0) {
+						throw new Error(
+							`Remote command: ${commands.app.stop().join(' ')} failed.`,
+						);
+					}
+				})
+				.then(() => {
+					var prom;
+
+					if (opts.single) {
+						// Always be sure the appropriate dir is created
+						prom = this.simpleExec(
 							commands.createFolder(Tessel.REMOTE_RUN_PATH),
 						);
-					});
+					} else {
+						// Delete any code that was previously at this file path
+						prom = this.simpleExec(
+							commands.deleteFolder(Tessel.REMOTE_RUN_PATH),
+						);
+						// Create the folder again
+						prom = prom.then(() => {
+							return this.simpleExec(
+								commands.createFolder(Tessel.REMOTE_RUN_PATH),
+							);
+						});
 
-					// If we are pushing code
-					if (opts.push) {
-						// Delete any old flash folder
-						prom = prom
-							.then(() => {
-								return this.simpleExec(
-									commands.deleteFolder(Tessel.REMOTE_APP_PATH),
-								);
-							})
-							// Create a new flash folder
-							.then(() => {
-								return this.simpleExec(
-									commands.createFolder(Tessel.REMOTE_APP_PATH),
-								);
+						// If we are pushing code
+						if (opts.push) {
+							// Delete any old flash folder
+							prom = prom
+								.then(() => {
+									return this.simpleExec(
+										commands.deleteFolder(Tessel.REMOTE_APP_PATH),
+									);
+								})
+								// Create a new flash folder
+								.then(() => {
+									return this.simpleExec(
+										commands.createFolder(Tessel.REMOTE_APP_PATH),
+									);
+								});
+						}
+					}
+
+					// Bundle and send tarred code to T2
+					return prom
+						.then(() => {
+							// This is where the language/runtimes will diverge.
+
+							return exportables.sendBundle(this, opts);
+						})
+						.then(() => {
+							return Preferences.write(CLI_ENTRYPOINT, entryPoint).then(() => {
+								if (isPush) {
+									// Push the application into flash
+									return exportables.push(this, opts).then(resolve);
+								} else {
+									// Run the application from ram
+									return exportables.run(this, opts).then(resolve);
+								}
 							});
+						});
+				})
+				.catch(reject);
+		});
+	};
+
+	/**
+	 * Restart the last project deployed to a Tessel 2.
+	 * Language: *
+	 *
+	 * @return {Promise}
+	 */
+	Tessel.prototype.restart = function (opts) {
+		var isPush = opts.type === 'flash';
+		var rootpath = isPush ? Tessel.REMOTE_APP_PATH : Tessel.REMOTE_TMP_PATH;
+		var filepath = path.posix.join(rootpath, Tessel.REMOTE_SCRIPT_PATH);
+
+		// Resolve the application's language/runtime
+		opts.lang = deployment.resolveLanguage(opts.lang || opts.entryPoint);
+
+		return new Promise((resolve, reject) => {
+			return this.simpleExec(commands.readFile(filepath + opts.entryPoint))
+				.then(() => {
+					if (isPush) {
+						// Start the script from flash memory
+						return exportables
+							.start(this, opts.entryPoint, opts)
+							.then(resolve)
+							.catch(reject);
+					} else {
+						// Start the script in RAM
+						return exportables.run(this, opts).then(resolve).catch(reject);
+					}
+				})
+				.catch((error) => {
+					/* istanbul ignore else */
+					if (error.message.includes('No such file or directory')) {
+						error = `"${opts.entryPoint}" not found on ${this.displayName}`;
+					}
+
+					return reject(error);
+				});
+		});
+	};
+
+	exportables.findProject = function (opts) {
+		return new Promise((resolve, reject) => {
+			var single = opts.single;
+			var file = opts.entryPoint;
+			var home = os.homedir();
+			var checkConfiguration = false;
+			var isDirectory = false;
+
+			// Addresses an encountered edge case where
+			// paths wouldn't resolve correctly:
+			//
+			// > fs.realpathSync("~/foo");
+			// Error: ENOENT, no such file or directory '/Users/me/foo/~'
+			// > path.dirname("~/foo")
+			// '~'
+			// > path.resolve("~/foo")
+			// '/Users/me/foo/~/foo'
+			//
+			//  ...And so on...
+			//
+			if (/^~/.test(file)) {
+				file = file.replace(/^~/, home);
+			}
+
+			try {
+				// This will throw if the file or directory doesn't
+				// exist. The cost of the try/catch is negligible.
+				isDirectory = fs.lstatSync(file).isDirectory();
+			} catch (error) {
+				/* istanbul ignore else */
+				if (opts.lang.meta.isFile) {
+					reject(error.message);
+				}
+			}
+
+			/* istanbul ignore if */
+			if (isDirectory && single) {
+				return reject('You can only push a single file, not a directory');
+			}
+
+			if (isDirectory) {
+				file = path.join(file, opts.lang.meta.entry);
+				checkConfiguration = true;
+			}
+
+			var pushdir = fs.realpathSync(path.dirname(file)) || '';
+			var relpath = '';
+			var useProgramDirname = false;
+
+			if (!single) {
+				while (
+					path.dirname(pushdir) !== pushdir &&
+					!fs.existsSync(path.join(pushdir, opts.lang.meta.configuration))
+				) {
+					relpath = path.join(path.basename(pushdir), relpath);
+					pushdir = path.dirname(pushdir);
+
+					/* istanbul ignore if */
+					if (pushdir === undefined) {
+						pushdir = '';
 					}
 				}
 
-				// Bundle and send tarred code to T2
-				return prom
-					.then(() => {
-						// This is where the language/runtimes will diverge.
-
-						return exportables.sendBundle(this, opts);
-					})
-					.then(() => {
-						return Preferences.write(CLI_ENTRYPOINT, entryPoint).then(() => {
-							if (isPush) {
-								// Push the application into flash
-								return exportables.push(this, opts).then(resolve);
-							} else {
-								// Run the application from ram
-								return exportables.run(this, opts).then(resolve);
-							}
-						});
-					});
-			})
-			.catch(reject);
-	});
-};
-
-/**
- * Restart the last project deployed to a Tessel 2.
- * Language: *
- *
- * @return {Promise}
- */
-Tessel.prototype.restart = function (opts) {
-	var isPush = opts.type === 'flash';
-	var rootpath = isPush ? Tessel.REMOTE_APP_PATH : Tessel.REMOTE_TMP_PATH;
-	var filepath = path.posix.join(rootpath, Tessel.REMOTE_SCRIPT_PATH);
-
-	// Resolve the application's language/runtime
-	opts.lang = deployment.resolveLanguage(opts.lang || opts.entryPoint);
-
-	return new Promise((resolve, reject) => {
-		return this.simpleExec(commands.readFile(filepath + opts.entryPoint))
-			.then(() => {
-				if (isPush) {
-					// Start the script from flash memory
-					return exportables
-						.start(this, opts.entryPoint, opts)
-						.then(resolve)
-						.catch(reject);
-				} else {
-					// Start the script in RAM
-					return exportables.run(this, opts).then(resolve).catch(reject);
+				if (exportables.endOfLookup(pushdir)) {
+					// Don't bother with configuration file check, it's not there.
+					checkConfiguration = false;
+					useProgramDirname = true;
 				}
-			})
-			.catch((error) => {
-				/* istanbul ignore else */
-				if (error.message.includes('No such file or directory')) {
-					error = `"${opts.entryPoint}" not found on ${this.displayName}`;
-				}
+			}
 
-				return reject(error);
+			var program = path.join(pushdir, relpath, path.basename(file));
+			var basename = '';
+			var validated;
+
+			if (checkConfiguration && !single) {
+				validated = opts.lang.meta.checkConfiguration(
+					pushdir,
+					basename,
+					program,
+				);
+				basename = validated.basename;
+				program = validated.program;
+			}
+
+			// If there was no directory found containing a configuration file,
+			// ie. package.json or Cargo.toml, then fallback to using the program
+			// entry point's path.dirname(...)
+			if (useProgramDirname) {
+				pushdir = path.dirname(program);
+				relpath = '';
+			}
+
+			resolve({
+				pushdir: pushdir,
+				program: program,
+				entryPoint: path.join(relpath, path.basename(program)),
 			});
-	});
-};
-
-exportables.findProject = function (opts) {
-	return new Promise((resolve, reject) => {
-		var single = opts.single;
-		var file = opts.entryPoint;
-		var home = os.homedir();
-		var checkConfiguration = false;
-		var isDirectory = false;
-
-		// Addresses an encountered edge case where
-		// paths wouldn't resolve correctly:
-		//
-		// > fs.realpathSync("~/foo");
-		// Error: ENOENT, no such file or directory '/Users/me/foo/~'
-		// > path.dirname("~/foo")
-		// '~'
-		// > path.resolve("~/foo")
-		// '/Users/me/foo/~/foo'
-		//
-		//  ...And so on...
-		//
-		if (/^~/.test(file)) {
-			file = file.replace(/^~/, home);
-		}
-
-		try {
-			// This will throw if the file or directory doesn't
-			// exist. The cost of the try/catch is negligible.
-			isDirectory = fs.lstatSync(file).isDirectory();
-		} catch (error) {
-			/* istanbul ignore else */
-			if (opts.lang.meta.isFile) {
-				reject(error.message);
-			}
-		}
-
-		/* istanbul ignore if */
-		if (isDirectory && single) {
-			return reject('You can only push a single file, not a directory');
-		}
-
-		if (isDirectory) {
-			file = path.join(file, opts.lang.meta.entry);
-			checkConfiguration = true;
-		}
-
-		var pushdir = fs.realpathSync(path.dirname(file)) || '';
-		var relpath = '';
-		var useProgramDirname = false;
-
-		if (!single) {
-			while (
-				path.dirname(pushdir) !== pushdir &&
-				!fs.existsSync(path.join(pushdir, opts.lang.meta.configuration))
-			) {
-				relpath = path.join(path.basename(pushdir), relpath);
-				pushdir = path.dirname(pushdir);
-
-				/* istanbul ignore if */
-				if (pushdir === undefined) {
-					pushdir = '';
-				}
-			}
-
-			if (exportables.endOfLookup(pushdir)) {
-				// Don't bother with configuration file check, it's not there.
-				checkConfiguration = false;
-				useProgramDirname = true;
-			}
-		}
-
-		var program = path.join(pushdir, relpath, path.basename(file));
-		var basename = '';
-		var validated;
-
-		if (checkConfiguration && !single) {
-			validated = opts.lang.meta.checkConfiguration(pushdir, basename, program);
-			basename = validated.basename;
-			program = validated.program;
-		}
-
-		// If there was no directory found containing a configuration file,
-		// ie. package.json or Cargo.toml, then fallback to using the program
-		// entry point's path.dirname(...)
-		if (useProgramDirname) {
-			pushdir = path.dirname(program);
-			relpath = '';
-		}
-
-		resolve({
-			pushdir: pushdir,
-			program: program,
-			entryPoint: path.join(relpath, path.basename(program)),
 		});
-	});
-};
+	};
 
-exportables.endOfLookup = function (pushdir) {
-	return path.dirname(pushdir) === pushdir;
-};
+	exportables.endOfLookup = function (pushdir) {
+		return path.dirname(pushdir) === pushdir;
+	};
 
-exportables.sendBundle = function (tessel, opts) {
-	if (typeof opts.tessel === 'undefined') {
-		opts.tessel = tessel;
-	}
-
-	return new Promise((resolve, reject) => {
-		// Execute the remote untar process command
-		tessel.connection.exec(
-			commands.untarStdin(Tessel.REMOTE_RUN_PATH),
-			(err, remoteProcess) => {
-				// Once the process starts running
-				return exportables
-					.findProject(opts)
-					.then((project) => {
-						opts.target = path.resolve(process.cwd(), project.pushdir);
-						opts.resolvedEntryPoint = project.entryPoint;
-
-						return opts.lang.preBundle(opts).then(() => {
-							return opts.lang.tarBundle(opts).then((bundle) => {
-								// RAM or Flash for log
-								var memtype;
-								if (opts.push) {
-									memtype = 'Flash';
-								} else {
-									memtype = 'RAM';
-								}
-
-								// Log write
-								log.info(
-									`Writing project to ${memtype} on ${tessel.displayName} (${bundle.length / 1000} kB)...`,
-								);
-
-								// Calling receive to know when the process closes
-								tessel.receive(remoteProcess, (err) => {
-									/* istanbul ignore if */
-									if (err) {
-										return reject(err);
-									} else {
-										log.info('Deployed.');
-										resolve(project.entryPoint);
-									}
-								});
-
-								// Write the code bundle to the hardware
-								remoteProcess.stdin.end(bundle);
-							});
-						});
-					})
-					.catch(reject);
-			},
-		);
-	});
-};
-
-exportables.run = function (tessel, options) {
-	if (options.resolvedEntryPoint === undefined) {
-		options.resolvedEntryPoint = options.entryPoint;
-	}
-
-	log.info('Running %s...', options.resolvedEntryPoint);
-
-	return new Promise((resolve, reject) => {
-		var preRun = Promise.resolve();
-		var lang = options.lang;
-
-		if (lang.preRun) {
-			preRun = lang.preRun(tessel, options);
+	exportables.sendBundle = function (tessel, opts) {
+		if (typeof opts.tessel === 'undefined') {
+			opts.tessel = tessel;
 		}
 
-		return preRun.then(() => {
+		return new Promise((resolve, reject) => {
+			// Execute the remote untar process command
 			tessel.connection.exec(
-				commands[lang.meta.extname].execute(
-					Tessel.REMOTE_RUN_PATH,
-					options.resolvedEntryPoint,
-					options,
-				),
-				{
-					pty: true,
+				commands.untarStdin(Tessel.REMOTE_RUN_PATH),
+				(err, remoteProcess) => {
+					// Once the process starts running
+					return exportables
+						.findProject(opts)
+						.then((project) => {
+							opts.target = path.resolve(process.cwd(), project.pushdir);
+							opts.resolvedEntryPoint = project.entryPoint;
+
+							return opts.lang.preBundle(opts).then(() => {
+								return opts.lang.tarBundle(opts).then((bundle) => {
+									// RAM or Flash for log
+									var memtype;
+									if (opts.push) {
+										memtype = 'Flash';
+									} else {
+										memtype = 'RAM';
+									}
+
+									// Log write
+									log.info(
+										`Writing project to ${memtype} on ${tessel.displayName} (${bundle.length / 1000} kB)...`,
+									);
+
+									// Calling receive to know when the process closes
+									tessel.receive(remoteProcess, (err) => {
+										/* istanbul ignore if */
+										if (err) {
+											return reject(err);
+										} else {
+											log.info('Deployed.');
+											resolve(project.entryPoint);
+										}
+									});
+
+									// Write the code bundle to the hardware
+									remoteProcess.stdin.end(bundle);
+								});
+							});
+						})
+						.catch(reject);
 				},
+			);
+		});
+	};
+
+	exportables.run = function (tessel, options) {
+		if (options.resolvedEntryPoint === undefined) {
+			options.resolvedEntryPoint = options.entryPoint;
+		}
+
+		log.info('Running %s...', options.resolvedEntryPoint);
+
+		return new Promise((resolve, reject) => {
+			var preRun = Promise.resolve();
+			var lang = options.lang;
+
+			if (lang.preRun) {
+				preRun = lang.preRun(tessel, options);
+			}
+
+			return preRun.then(() => {
+				tessel.connection.exec(
+					commands[lang.meta.extname].execute(
+						Tessel.REMOTE_RUN_PATH,
+						options.resolvedEntryPoint,
+						options,
+					),
+					{
+						pty: true,
+					},
+					(error, remoteProcess) => {
+						/* istanbul ignore if */
+						if (error) {
+							return reject(error);
+						}
+
+						log.spinner.stop();
+
+						if (lang.postRun) {
+							options.remoteProcess = remoteProcess;
+							lang.postRun(tessel, options);
+						}
+
+						// When the stream closes, return from the function
+						remoteProcess.once('close', resolve);
+
+						// Pipe output FROM the remote process.
+						remoteProcess.stdout.pipe(process.stdout);
+						remoteProcess.stderr.pipe(process.stderr);
+					},
+				);
+			});
+		});
+	};
+
+	exportables.push = function (tessel, opts) {
+		// Write the node start file
+		/* istanbul ignore if */
+		if (opts.resolvedEntryPoint === undefined) {
+			opts.resolvedEntryPoint = opts.entryPoint;
+		}
+
+		return exportables
+			.createShellScript(tessel, opts)
+			.then(() => exportables.start(tessel, opts.resolvedEntryPoint));
+	};
+
+	/**
+	 * Write remote shell script
+	 * Language: *
+	 *
+	 * @param {Object} options  Specify how dependency graphing is configured and behaves.
+	 */
+	exportables.createShellScript = function (tessel, opts) {
+		return new Promise((resolve, reject) => {
+			// Open a stdin pipe tp the file
+			tessel.connection.exec(
+				commands.openStdinToFile(getPushStartShScript()),
 				(error, remoteProcess) => {
 					/* istanbul ignore if */
 					if (error) {
 						return reject(error);
 					}
 
-					log.spinner.stop();
+					tessel.receive(remoteProcess, (error, exitCode) => {
+						/* istanbul ignore if */
+						if (error && exitCode) {
+							return reject(error);
+						}
 
-					if (lang.postRun) {
-						options.remoteProcess = remoteProcess;
-						lang.postRun(tessel, options);
-					}
+						// Set the perimissions on the file to be executable
+						tessel.connection.exec(
+							commands.chmod('+x', getPushStartShScript()),
+							(error, remoteProcess) => {
+								/* istanbul ignore if */
+								if (error) {
+									return reject(error);
+								}
+								// When that process completes
+								tessel.receive(remoteProcess, (error, exitCode) => {
+									/* istanbul ignore if */
+									if (error && exitCode) {
+										return reject(error);
+									}
+									// Let the user know
+									log.info('Your Tessel may now be untethered.');
+									log.info(
+										'The application will run whenever Tessel boots up.\n     To remove this application, use "t2 erase".',
+									);
+									return resolve();
+								});
+							},
+						);
+					});
 
-					// When the stream closes, return from the function
-					remoteProcess.once('close', resolve);
-
-					// Pipe output FROM the remote process.
-					remoteProcess.stdout.pipe(process.stdout);
-					remoteProcess.stderr.pipe(process.stderr);
+					remoteProcess.stdin.end(
+						Buffer.from(opts.lang.meta.shell(opts).trim()),
+					);
 				},
 			);
 		});
-	});
-};
+	};
 
-exportables.push = function (tessel, opts) {
-	// Write the node start file
-	/* istanbul ignore if */
-	if (opts.resolvedEntryPoint === undefined) {
-		opts.resolvedEntryPoint = opts.entryPoint;
-	}
-
-	return exportables
-		.createShellScript(tessel, opts)
-		.then(() => exportables.start(tessel, opts.resolvedEntryPoint));
-};
-
-/**
- * Write remote shell script
- * Language: *
- *
- * @param {Object} options  Specify how dependency graphing is configured and behaves.
- */
-exportables.createShellScript = function (tessel, opts) {
-	return new Promise((resolve, reject) => {
-		// Open a stdin pipe tp the file
-		tessel.connection.exec(
-			commands.openStdinToFile(getPushStartShScript()),
-			(error, remoteProcess) => {
-				/* istanbul ignore if */
-				if (error) {
-					return reject(error);
-				}
-
-				tessel.receive(remoteProcess, (error, exitCode) => {
-					/* istanbul ignore if */
-					if (error && exitCode) {
-						return reject(error);
-					}
-
-					// Set the perimissions on the file to be executable
-					tessel.connection.exec(
-						commands.chmod('+x', getPushStartShScript()),
-						(error, remoteProcess) => {
-							/* istanbul ignore if */
-							if (error) {
-								return reject(error);
-							}
-							// When that process completes
-							tessel.receive(remoteProcess, (error, exitCode) => {
-								/* istanbul ignore if */
-								if (error && exitCode) {
-									return reject(error);
-								}
-								// Let the user know
-								log.info('Your Tessel may now be untethered.');
-								log.info(
-									'The application will run whenever Tessel boots up.\n     To remove this application, use "t2 erase".',
-								);
-								return resolve();
-							});
-						},
-					);
-				});
-
-				remoteProcess.stdin.end(Buffer.from(opts.lang.meta.shell(opts).trim()));
-			},
-		);
-	});
-};
-
-/**
- * Execute from the entry point on the tessel
- * Language: *
- *
- * @param  {Tessel} tessel     The Tessel board that has just been deployed to.
- * @param  {String} entryPoint The name of the file or executable to start on the board.
- * @return {Promise}
- */
-exportables.start = function (tessel, entryPoint) {
-	return tessel
-		.simpleExec(
-			commands.moveFolder(Tessel.REMOTE_RUN_PATH, Tessel.REMOTE_APP_PATH),
-		)
-		.then(() => {
-			return tessel.simpleExec(commands.app.enable()).then(() => {
-				return tessel.simpleExec(commands.app.start()).then(() => {
-					log.info('Running %s...', entryPoint);
-					return Promise.resolve();
+	/**
+	 * Execute from the entry point on the tessel
+	 * Language: *
+	 *
+	 * @param  {Tessel} tessel     The Tessel board that has just been deployed to.
+	 * @param  {String} entryPoint The name of the file or executable to start on the board.
+	 * @return {Promise}
+	 */
+	exportables.start = function (tessel, entryPoint) {
+		return tessel
+			.simpleExec(
+				commands.moveFolder(Tessel.REMOTE_RUN_PATH, Tessel.REMOTE_APP_PATH),
+			)
+			.then(() => {
+				return tessel.simpleExec(commands.app.enable()).then(() => {
+					return tessel.simpleExec(commands.app.start()).then(() => {
+						log.info('Running %s...', entryPoint);
+						return Promise.resolve();
+					});
 				});
 			});
-		});
-};
+	};
 }
 
 export { exportables };

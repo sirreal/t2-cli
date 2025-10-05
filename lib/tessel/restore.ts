@@ -52,25 +52,25 @@ const MAX_READ_SIZE = Math.pow(2, 24);
 var exportables = {};
 
 export function registerMethods(Tessel) {
-Tessel.prototype.restore = function (options) {
-	return new Promise((resolve, reject) => {
-		var rdid = Promise.resolve();
+	Tessel.prototype.restore = function (options) {
+		return new Promise((resolve, reject) => {
+			var rdid = Promise.resolve();
 
-		// If no "force/-f" flag is present, then
-		// we must validate the device id. This is the
-		// default behavior. Only extreme circumstances
-		// call for forcing the restore process.
-		if (!options.force) {
-			rdid = exportables.validateDeviceId(this.usbConnection);
-		}
+			// If no "force/-f" flag is present, then
+			// we must validate the device id. This is the
+			// default behavior. Only extreme circumstances
+			// call for forcing the restore process.
+			if (!options.force) {
+				rdid = exportables.validateDeviceId(this.usbConnection);
+			}
 
-		// 1. Download Images for download images
-		// 2. Flash images to USB connected Tessel 2
-		return rdid.then(update.fetchRestore).then((images) => {
-			return exportables.flash(this, images).then(resolve).catch(reject);
+			// 1. Download Images for download images
+			// 2. Flash images to USB connected Tessel 2
+			return rdid.then(update.fetchRestore).then((images) => {
+				return exportables.flash(this, images).then(resolve).catch(reject);
+			});
 		});
-	});
-};
+	};
 }
 
 function address(addr) {

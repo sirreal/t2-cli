@@ -154,7 +154,7 @@ export function toolchainPath() {
 		}
 		return reject(new Error('No toolchain found.'));
 	});
-};
+}
 
 // Checks if CHECKSUM file in our SDK equals our expected checksum.
 // This will resolve with checking that the SDK exists and matches the checksum.
@@ -173,7 +173,7 @@ export function checkTools(checksumVerify) {
 		isVerified: false,
 		path: dir,
 	}));
-};
+}
 
 /* istanbul ignore next */
 export function checkRustlib(rustv, checksumVerify) {
@@ -190,7 +190,7 @@ export function checkRustlib(rustv, checksumVerify) {
 		isVerified: false,
 		path: dir,
 	}));
-};
+}
 
 /* istanbul ignore next */
 export function installTools() {
@@ -218,7 +218,7 @@ export function installTools() {
 				return extractTools(checksumVerify, path.basename(url), download(url));
 			});
 	});
-};
+}
 
 /* istanbul ignore next */
 export function installRustlib() {
@@ -256,7 +256,7 @@ export function installRustlib() {
 				);
 			});
 	});
-};
+}
 
 /* istanbul ignore next */
 function extract(
@@ -404,7 +404,7 @@ export function getBuildConfig() {
 
 			return config;
 		});
-};
+}
 
 // Confirms that the user has a version of rustc and cargo installed. Resolves
 // with the current rustc version, rejects if either executable is not found
@@ -444,7 +444,7 @@ export function rustVersion() {
 			});
 		});
 	});
-};
+}
 
 // Check the targets of a cargo crate.
 /* istanbul ignore next */
@@ -469,7 +469,7 @@ export function cargoMetadata(destdir) {
 			}
 		});
 	});
-};
+}
 
 /* istanbul ignore next */
 export function buildTessel(config) {
@@ -503,7 +503,7 @@ export function buildTessel(config) {
 			}
 		});
 	});
-};
+}
 
 /* istanbul ignore next */
 export function bundleTessel(config) {
@@ -518,7 +518,7 @@ export function bundleTessel(config) {
 				resolve(tarball);
 			});
 	});
-};
+}
 
 /* istanbul ignore next */
 export const cargo = {
@@ -566,7 +566,7 @@ export function checkSdk() {
       Please run "cargo tessel sdk install" and try again.
       To instead use the remote Rust compiler, use "t2 run <target> --rustcc".`),
 	);
-};
+}
 
 /* istanbul ignore next */
 export function checkRust(opts) {
@@ -576,7 +576,7 @@ export function checkRust(opts) {
         Please install Rust on your machine: https://rustup.rs/
         ${opts.isCli ? 'To instead use the remote Rust compiler, use "t2 run <target> --rustcc".' : ''}`),
 	);
-};
+}
 
 // Logging function that checks if rust is installed, then if the binary matches.
 // opts matches { isCli: boolean, binary: String[, path: String] }
@@ -629,22 +629,21 @@ export function checkBinaryName(opts) {
 			});
 		});
 	});
-};
+}
 
 // opts matches { isCli: boolean, binary: String[, path: String] }
 /* istanbul ignore next */
 export function runBuild(opts) {
 	return checkRust({
-			isCli: opts.isCli,
-		})
+		isCli: opts.isCli,
+	})
 		.then(() => checkBinaryName(opts))
 		.then((out) => {
 			return checkSdk().then((config) => {
 				config.name = out.name;
 				config.path = out.path;
 
-				return buildTessel(config)
-					.then(() => bundleTessel(config));
+				return buildTessel(config).then(() => bundleTessel(config));
 			});
 		});
-};
+}

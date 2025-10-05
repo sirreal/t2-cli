@@ -58,7 +58,7 @@ export function drivers() {
 			return resolve();
 		}
 	});
-};
+}
 
 export function homedir() {
 	var userTesselDirectory = path.join(osenv.home(), '.tessel');
@@ -92,4 +92,4 @@ export function homedir() {
 			});
 		});
 	});
-};
+}

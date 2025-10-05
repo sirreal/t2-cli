@@ -10,28 +10,30 @@ import * as log from '../log.ts';
 import Tessel from './tessel.ts';
 
 export function registerMethods(Tessel) {
-Tessel.prototype.eraseScript = function () {
-	log.info('Erasing files from Flash...');
-	return this.simpleExec(commands.app.stop())
-		.then(() => this.simpleExec(commands.app.disable()))
-		.then(() => {
-			return this.simpleExec(
-				commands.deleteFolder(Tessel.REMOTE_APP_PATH),
-			).then(function erased() {
-				log.info('Files erased.');
+	Tessel.prototype.eraseScript = function () {
+		log.info('Erasing files from Flash...');
+		return this.simpleExec(commands.app.stop())
+			.then(() => this.simpleExec(commands.app.disable()))
+			.then(() => {
+				return this.simpleExec(
+					commands.deleteFolder(Tessel.REMOTE_APP_PATH),
+				).then(function erased() {
+					log.info('Files erased.');
+				});
+			})
+			.catch((error) => {
+				// If we get a notice that the command failed
+				if (error.message.includes('Command failed')) {
+					// Let the user know what went wrong
+					return Promise.reject(
+						'No files have been pushed. Run `t2 push FILE` to push to Flash.',
+					);
+				} else {
+					// Otherwise this is an unexpected error
+					return Promise.reject(
+						`An unexpected error occurred:${error.message}`,
+					);
+				}
 			});
-		})
-		.catch((error) => {
-			// If we get a notice that the command failed
-			if (error.message.includes('Command failed')) {
-				// Let the user know what went wrong
-				return Promise.reject(
-					'No files have been pushed. Run `t2 push FILE` to push to Flash.',
-				);
-			} else {
-				// Otherwise this is an unexpected error
-				return Promise.reject(`An unexpected error occurred:${error.message}`);
-			}
-		});
-};
+	};
 }

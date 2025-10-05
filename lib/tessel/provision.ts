@@ -23,50 +23,50 @@ var remoteAuthFile = '/etc/dropbear/authorized_keys';
 var configurable = true;
 
 export function registerMethods(Tessel) {
-Object.defineProperty(Tessel, 'LOCAL_AUTH_KEY', {
-	configurable,
-	get: function () {
-		return authKey;
-	},
-	set: function (value) {
-		authKey = value;
-		authPath = path.dirname(authKey);
-	},
-});
-
-Object.defineProperty(Tessel, 'LOCAL_AUTH_PATH', {
-	configurable,
-	get: function () {
-		return authPath;
-	},
-	set: function (value) {
-		authPath = value;
-		authKey = path.join(authPath, idrsa);
-	},
-});
-
-Tessel.isProvisioned = function () {
-	return fs.existsSync(authKey) && fs.existsSync(authKey + '.pub');
-};
-
-Tessel.prototype.provision = function () {
-	if (this.connection.connectionType !== 'USB') {
-		return Promise.reject(
-			'Tessel must be connected with USB to use this command.',
-		);
-	}
-
-	// Check if local .tessel file has keypair, if not, put it there
-	return actions.setupLocal(authKey).then(() => {
-		return actions.authTessel(this, authKey).catch(function (err) {
-			if (err instanceof AlreadyAuthenticatedError) {
-				log.info(err.message);
-			} else {
-				throw err;
-			}
-		});
+	Object.defineProperty(Tessel, 'LOCAL_AUTH_KEY', {
+		configurable,
+		get: function () {
+			return authKey;
+		},
+		set: function (value) {
+			authKey = value;
+			authPath = path.dirname(authKey);
+		},
 	});
-};
+
+	Object.defineProperty(Tessel, 'LOCAL_AUTH_PATH', {
+		configurable,
+		get: function () {
+			return authPath;
+		},
+		set: function (value) {
+			authPath = value;
+			authKey = path.join(authPath, idrsa);
+		},
+	});
+
+	Tessel.isProvisioned = function () {
+		return fs.existsSync(authKey) && fs.existsSync(authKey + '.pub');
+	};
+
+	Tessel.prototype.provision = function () {
+		if (this.connection.connectionType !== 'USB') {
+			return Promise.reject(
+				'Tessel must be connected with USB to use this command.',
+			);
+		}
+
+		// Check if local .tessel file has keypair, if not, put it there
+		return actions.setupLocal(authKey).then(() => {
+			return actions.authTessel(this, authKey).catch(function (err) {
+				if (err instanceof AlreadyAuthenticatedError) {
+					log.info(err.message);
+				} else {
+					throw err;
+				}
+			});
+		});
+	};
 }
 
 var actions = {};

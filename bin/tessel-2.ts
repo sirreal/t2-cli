@@ -160,9 +160,7 @@ makeCommand('restart')
 				} else {
 					// 3. However, if that doesn't exist either,
 					//    there is nothing further to do.
-					return closeFailedCommand(
-						'Cannot determine entry point file name',
-					);
+					return closeFailedCommand('Cannot determine entry point file name');
 				}
 				callControllerWith('restart', options);
 			});

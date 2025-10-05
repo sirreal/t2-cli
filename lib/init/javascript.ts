@@ -98,12 +98,12 @@ exportables.getDependencies = async (pkg) => {
 				return { name: content.name, version: content.version };
 			}
 			return null;
-		})
+		}),
 	).then((results) =>
 		results.filter(Boolean).reduce((accum, item) => {
 			accum[item.name] = item.version;
 			return accum;
-		}, {})
+		}, {}),
 	);
 
 	if (typeof pkg.dependencies === 'undefined') {
