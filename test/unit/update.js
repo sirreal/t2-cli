@@ -1,963 +1,1103 @@
 // Test dependencies are required and exposed in common/bootstrap.js
 require('../common/bootstrap');
 
-var builds = [{
-  sha: 'ac4d8d8a5bfd671f7f174c2eaa258856bd82fe29',
-  released: '2017-05-18T02:21:57.856Z',
-  version: '0.0.0'
-}, {
-  sha: '9a85c84f5a03c715908921baaaa9e7397985bc7f',
-  released: '2017-08-12T03:01:57.856Z',
-  version: '0.0.1'
-}];
+var builds = [
+	{
+		sha: 'ac4d8d8a5bfd671f7f174c2eaa258856bd82fe29',
+		released: '2017-05-18T02:21:57.856Z',
+		version: '0.0.0',
+	},
+	{
+		sha: '9a85c84f5a03c715908921baaaa9e7397985bc7f',
+		released: '2017-08-12T03:01:57.856Z',
+		version: '0.0.1',
+	},
+];
 
 exports['controller.update'] = {
-  setUp(done) {
-    this.sandbox = sinon.sandbox.create();
-    this.spinnerStart = this.sandbox.stub(log.spinner, 'start');
-    this.spinnerStop = this.sandbox.stub(log.spinner, 'stop');
-    this.warn = this.sandbox.stub(log, 'warn');
-    this.info = this.sandbox.stub(log, 'info');
-    this.basic = this.sandbox.stub(log, 'basic');
-
-    this.tessel = TesselSimulator();
-
-    this.getTessel = this.sandbox.stub(Tessel, 'get').callsFake((opts) => {
-      this.tessel.setLANConnectionPreference(opts.lanPrefer);
-      return Promise.resolve(this.tessel);
-    });
-
-    this.update = this.sandbox.stub(Tessel.prototype, 'update').callsFake(() => Promise.resolve());
-
-    this.fetchCurrentBuildInfo = this.sandbox.stub(Tessel.prototype, 'fetchCurrentBuildInfo').callsFake(() => {
-      return Promise.resolve('9a85c84f5a03c715908921baaaa9e7397985bc7f');
-    });
-
-    // resolve requestBuildList with a copy of the stubbed data, otherwise the original stub is mutated when sorted
-    this.requestBuildList = this.sandbox.stub(updates, 'requestBuildList').callsFake(() => Promise.resolve(builds.slice()));
-
-    this.updateTesselWithVersion = this.sandbox.spy(controller, 'updateTesselWithVersion');
-    this.closeTesselConnections = this.sandbox.spy(controller, 'closeTesselConnections');
-
-    this.processExit = this.sandbox.stub(process, 'exit');
-    done();
-  },
-
-  tearDown(done) {
-    this.sandbox.restore();
-    this.tessel.mockClose();
-
-    // If builds were reversed, fix them.
-    if (builds[0].version === '0.0.1') {
-      builds.reverse();
-    }
-    done();
-  },
-
-  listBuilds(test) {
-    test.expect(7);
-
-    controller.printAvailableUpdates()
-      .then(() => {
-        test.equal(this.requestBuildList.callCount, 1);
-        // Print info that these are log
-        // 'Latest builds:'
-        test.equal(this.info.callCount, 1);
-        // Print each version out
-        // `Version: ${build.version}\nPublished: ${published}\n${build.sha}\n`
-        test.equal(this.basic.callCount, 2);
-
-        const firstCallArgs = this.basic.getCall(0).args[0];
-        test.equal(firstCallArgs.startsWith('Version: 0.0.1'), true);
-        test.equal(firstCallArgs.includes(builds[1].sha), true);
-
-        const secondCallArgs = this.basic.getCall(1).args[0];
-        test.equal(secondCallArgs.startsWith('Version: 0.0.0'), true);
-        test.equal(secondCallArgs.includes(builds[0].sha), true);
-
-        // Finish
-        test.done();
-      })
-      .catch(error => {
-        test.ok(false, `printAvailableUpdates failed: ${error.toString()}`);
-        test.done();
-      });
-  },
-
-  listBuildFetchError(test) {
-    test.expect(2);
-
-    var errMessage = 'Could not fetch builds';
-
-    this.requestBuildList.restore();
-    this.requestBuildList = this.sandbox.stub(updates, 'requestBuildList').callsFake(function() {
-      return Promise.reject(new Error(errMessage));
-    });
-
-    controller.printAvailableUpdates()
-      .then(() => {
-        test.equal(true, false, 'Build fetch should have failed.');
-        test.done();
-      })
-      .catch(error => {
-        // We tried to fetch the builds
-        test.equal(this.requestBuildList.callCount, 1);
-        // But it failed with the erroror message we specified
-        test.equal(error.message, errMessage);
-        test.done();
-      });
-  },
-
-  buildOptionValid(test) {
-    test.expect(9);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    var binaries = {
-      firmware: Buffer.alloc(0),
-      openwrt: Buffer.alloc(0)
-    };
-
-    this.fetchBuild = this.sandbox.stub(updates, 'fetchBuild').callsFake(function() {
-      return Promise.resolve(binaries);
-    });
-
-    var opts = {
-      version: '0.0.1',
-      lanPrefer: true
-    };
-    controller.update(opts)
-      .then(() => {
-        // We have to fetch the build list to figure out what the sha is of this version
-        test.equal(this.requestBuildList.callCount, 1);
-        // We did fetch the specified build
-        test.equal(this.fetchBuild.callCount, 1);
-        // It was called with the correct args
-        test.deepEqual(this.fetchBuild.lastCall.args[0], builds[1]);
-        // We fetched the Tessel to update
-        test.equal(this.getTessel.callCount, 1);
-        // The Tessel was updated
-        test.equal(this.update.callCount, 1);
-        // The update used the appropriate binaries
-        test.equal(this.update.calledWith(opts, binaries), true);
-        // Then the Tessel was closed
-        test.equal(this.tessel.closed, true);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      })
-      .catch(error => {
-        test.ok(false, `update failed: ${error.toString()}`);
-        test.done();
-      });
-  },
-
-  buildOptionInvalid(test) {
-    test.expect(3);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    var errMessage = 'No such build exists';
-
-    this.fetchBuild = this.sandbox.stub(updates, 'fetchBuild').callsFake(function() {
-      return Promise.reject(new Error(errMessage));
-    });
-
-    var opts = {
-      version: '0.0.1'
-    };
-    controller.update(opts)
-      .catch(error => {
-        // We attempted to fetch a build
-        test.equal(this.fetchBuild.callCount, 1);
-        // But it failed with the error we specified
-        test.equal(error.message, errMessage);
-        // We need to close all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        test.done();
-      });
-  },
-
-  buildLatest(test) {
-    test.expect(8);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    var binaries = {
-      firmware: Buffer.alloc(0),
-      openwrt: Buffer.alloc(0)
-    };
-
-    this.fetchBuild = this.sandbox.stub(updates, 'fetchBuild').callsFake(function() {
-      return Promise.resolve(binaries);
-    });
-
-    this.fetchCurrentBuildInfo.restore();
-    this.fetchCurrentBuildInfo = this.sandbox.stub(Tessel.prototype, 'fetchCurrentBuildInfo').callsFake(function() {
-      return Promise.resolve('ac4d8d8a5bfd671f7f174c2eaa258856bd82fe29');
-    });
-
-    var opts = {
-      lanPrefer: true
-    };
-    controller.update(opts)
-      .then(() => {
-        // Make sure we checked what the Tessel version is currently at
-        test.equal(this.fetchCurrentBuildInfo.callCount, 1);
-        // We fetched only one build
-        test.equal(this.fetchBuild.callCount, 1);
-        // It was the latest build
-        test.equal(this.fetchBuild.calledWith(builds[1]), true);
-        // Update Tessel was successfully called
-        test.equal(this.update.callCount, 1);
-        // It was provided the binaries
-        test.equal(this.update.calledWith(opts, binaries), true);
-        // Then Tessel was closed
-        test.equal(this.tessel.closed, true);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      })
-      .catch(error => {
-        test.ok(false, `update failed: ${error.toString()}`);
-        test.done();
-      });
-  },
-
-  buildLatestAlreadyCurrent(test) {
-    test.expect(7);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    var binaries = {
-      firmware: Buffer.alloc(0),
-      openwrt: Buffer.alloc(0)
-    };
-
-    this.fetchBuild = this.sandbox.stub(updates, 'fetchBuild').callsFake(function() {
-      return Promise.resolve(binaries);
-    });
-
-    var opts = {
-      lanPrefer: true
-    };
-    controller.update(opts)
-      .then(() => {
-        // Make sure we checked what the Tessel version is currently at
-        test.equal(this.fetchCurrentBuildInfo.callCount, 1);
-        // We fetched the build list once
-        test.equal(this.requestBuildList.callCount, 1);
-        // We didn't fetch any builds because Tessel is already up to date
-        test.equal(this.fetchBuild.callCount, 0);
-        // Update Tessel was not called because it was already up to date
-        test.equal(this.update.callCount, 0);
-        // Then Tessel was closed
-        test.equal(this.tessel.closed, true);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      });
-  },
-
-  buildLatestUpdateFailed(test) {
-    test.expect(7);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    var binaries = {
-      firmware: Buffer.alloc(0),
-      openwrt: Buffer.alloc(0)
-    };
-
-    this.fetchBuild = this.sandbox.stub(updates, 'fetchBuild').callsFake(function() {
-      return Promise.resolve(binaries);
-    });
-
-    this.fetchCurrentBuildInfo.restore();
-    this.fetchCurrentBuildInfo = this.sandbox.stub(Tessel.prototype, 'fetchCurrentBuildInfo').callsFake(function() {
-      return Promise.resolve('ac4d8d8a5bfd671f7f174c2eaa258856bd82fe29');
-    });
-
-    var errMessage = 'Something absolutely dreadful happened. Your Tessel is bricked.';
-    this.update.restore();
-    this.update = this.sandbox.stub(Tessel.prototype, 'update').callsFake(() => {
-      return Promise.reject(new Error(errMessage));
-    });
-
-    var opts = {
-      lanPrefer: true
-    };
-    controller.update(opts)
-      .catch(error => {
-        // We fetched only one build
-        test.equal(this.fetchBuild.callCount, 1);
-        // It was the latest build
-        test.equal(this.fetchBuild.calledWith(builds[1]), true);
-        // Update Tessel was not called because it was already up to date
-        test.equal(this.update.callCount, 1);
-        // The update failed with our error message
-        test.equal(error.message, errMessage);
-        // Then Tessel was closed
-        test.equal(this.tessel.closed, true);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      });
-  },
-
-  buildLatestForce(test) {
-    test.expect(7);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    var binaries = {
-      firmware: Buffer.alloc(0),
-      openwrt: Buffer.alloc(0)
-    };
-
-    this.fetchBuild = this.sandbox.stub(updates, 'fetchBuild').callsFake(function() {
-      return Promise.resolve(binaries);
-    });
-
-    var opts = {
-      force: true,
-      lanPrefer: true
-    };
-
-    controller.update(opts)
-      .then(() => {
-        // We fetched only one build
-        test.equal(this.fetchBuild.callCount, 1);
-        // It was the latest build
-        test.equal(this.fetchBuild.calledWith(builds[1]), true);
-        // Update Tessel was not called because it was already up to date
-        test.equal(this.update.callCount, 1);
-        // It was provided the binaries
-        test.equal(this.update.calledWith(opts, binaries), true);
-        // Then Tessel was closed
-        test.equal(this.tessel.closed, true);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      })
-      .catch(error => {
-        test.ok(false, `update failed: ${error.toString()}`);
-        test.done();
-      });
-  },
-
-  buildLatestNoConfigSave(test) {
-    test.expect(8);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    var binaries = {
-      firmware: Buffer.alloc(0),
-      openwrt: Buffer.alloc(0)
-    };
-
-    this.fetchBuild = this.sandbox.stub(updates, 'fetchBuild').callsFake(function() {
-      return Promise.resolve(binaries);
-    });
-
-    var opts = {
-      force: true,
-      lanPrefer: true,
-      n: true
-    };
-
-    controller.update(opts)
-      .then(() => {
-        // We fetched only one build
-        test.equal(this.fetchBuild.callCount, 1);
-        // It was the latest build
-        test.equal(this.fetchBuild.calledWith(builds[1]), true);
-        // Update Tessel was not called because it was already up to date
-        test.equal(this.update.callCount, 1);
-        // It was provided the binaries and options
-        test.equal(this.update.calledWith(opts, binaries), true);
-        // Provided Options match first parameter
-        test.deepEqual(this.update.lastCall.args[0], opts);
-        // Then Tessel was closed
-        test.equal(this.tessel.closed, true);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      })
-      .catch(error => {
-        test.ok(false, `update failed: ${error.toString()}`);
-        test.done();
-      });
-  },
-
-  explicitLatestDoesntImmediatelyUpdate(test) {
-    test.expect(3);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    var binaries = {
-      firmware: Buffer.alloc(0),
-      openwrt: Buffer.alloc(0)
-    };
-
-    this.fetchBuild = this.sandbox.stub(updates, 'fetchBuild').callsFake(function() {
-      return Promise.resolve(binaries);
-    });
-
-    var opts = {
-      version: 'latest',
-      lanPrefer: true
-    };
-
-    controller.update(opts)
-      .then(() => {
-        test.equal(this.updateTesselWithVersion.callCount, 0);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      })
-      .catch(error => {
-        test.ok(false, `update failed: ${error.toString()}`);
-        test.done();
-      });
-  },
-
-  noVerifiedVersion(test) {
-    test.expect(2);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    var opts = {
-      version: 'x.x.x',
-      lanPrefer: true
-    };
-    controller.update(opts)
-      .catch(error => {
-        test.equal(error, 'The requested build was not found. Please see the available builds with `t2 update -l`.');
-        // We need to close all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        test.done();
-      });
-  },
-
-  noVersionForcedUpdate(test) {
-    test.expect(4);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    this.fetchCurrentBuildInfo.restore();
-    this.fetchCurrentBuildInfo = this.sandbox.stub(Tessel.prototype, 'fetchCurrentBuildInfo').callsFake(function() {
-      return Promise.reject(new Error('[Error: cat: can\'t open \'/etc/tessel-version\': No such file or directory]'));
-    });
-
-    var binaries = {
-      firmware: Buffer.alloc(0),
-      openwrt: Buffer.alloc(0)
-    };
-
-    this.fetchBuild = this.sandbox.stub(updates, 'fetchBuild').callsFake(function() {
-      return Promise.resolve(binaries);
-    });
-
-    var opts = {
-      lanPrefer: true
-    };
-    controller.update(opts)
-      .then(() => {
-        // It should attempt to fetch a build
-        test.equal(this.fetchBuild.callCount, 1);
-        // We should be requesting the latest build
-        test.equal(this.fetchBuild.calledWith(builds[1]), true);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      })
-      .catch(() => {
-        test.ok(false, 'It should force an update if the file version is not found');
-        test.done();
-      });
-  },
-
-  noVersionUnknownError(test) {
-    test.expect(4);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    var unknownError = new Error('Something totally weird happened.');
-
-    this.fetchCurrentBuildInfo.restore();
-    this.fetchCurrentBuildInfo = this.sandbox.stub(Tessel.prototype, 'fetchCurrentBuildInfo').callsFake(function() {
-      return Promise.reject(unknownError);
-    });
-
-    var binaries = {
-      firmware: Buffer.alloc(0),
-      openwrt: Buffer.alloc(0)
-    };
-
-    this.fetchBuild = this.sandbox.stub(updates, 'fetchBuild').callsFake(function() {
-      return Promise.resolve(binaries);
-    });
-
-    var opts = {
-      lanPrefer: true
-    };
-    controller.update(opts)
-      .then(() => {
-        test.ok(false, 'It should throw an error if we get an unknown error');
-        test.done();
-      })
-      .catch(error => {
-        // Make sure this error has the proper error message
-        test.equal(error.message, unknownError.message);
-        // It should not attempt to fetch any builds
-        test.equal(this.fetchBuild.callCount, 0);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      });
-  },
-
-  properBuildCompare(test) {
-
-    // use builds where the string compare of the versions
-    // would lead to incorrect comparison ('0.0.7 > 0.0.10')
-    var mixedBuilds = [{
-      sha: 'ac4d8d8a5bfd671f7f174c2eaa258856bd82fe29',
-      released: '2017-05-18T02:21:57.856Z',
-      version: '0.0.7'
-    }, {
-      sha: '9a85c84f5a03c715908921baaaa9e7397985bc7f',
-      released: '2017-08-12T03:01:57.856Z',
-      version: '0.0.10'
-    }];
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    var binaries = {
-      firmware: Buffer.alloc(0),
-      openwrt: Buffer.alloc(0)
-    };
-
-    this.fetchCurrentBuildInfo.restore();
-    this.fetchCurrentBuildInfo = this.sandbox.stub(Tessel.prototype, 'fetchCurrentBuildInfo').callsFake(function() {
-      // Resolve with earlier build (0.0.7)
-      return Promise.resolve(mixedBuilds[0].sha);
-    });
-
-
-    this.requestBuildList.restore();
-    this.requestBuildList = this.sandbox.stub(updates, 'requestBuildList').callsFake(function() {
-      // Return our two mixed builds
-      return Promise.resolve(mixedBuilds);
-    });
-
-    this.fetchBuild = this.sandbox.stub(updates, 'fetchBuild').callsFake(function() {
-      return Promise.resolve(binaries);
-    });
-
-    controller.update({})
-      .then(() => {
-        // It should attempt to fetch a build
-        test.equal(this.fetchBuild.callCount, 1);
-        // We should be requesting the latest build
-        test.equal(this.fetchBuild.calledWith(mixedBuilds[1]), true);
-        test.done();
-      })
-      .catch(() => {
-        test.ok(false, 'Update should not reject with valid options and builds.');
-        test.done();
-      });
-  },
-  updateWithLocalBuilds(test) {
-    test.expect(3);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    this.loadLocalBinary = this.sandbox.stub(updates, 'loadLocalBinary').returns(Promise.resolve(Buffer.alloc(0)));
-
-    var opts = {
-      lanPrefer: true,
-      'openwrt-path': 'somepath/foo',
-      'firmware-path': 'somepath/bar',
-    };
-
-    controller.update(opts)
-      .then(() => {
-        // It should attempt to fetch a build
-        test.equal(this.loadLocalBinary.callCount, 2);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      })
-      .catch(() => {
-        test.ok(false, 'It should update from local binary paths');
-        test.done();
-      });
-  },
-  failLocalBadPath(test) {
-    test.expect(4);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    var err = new Error('Bad local binary path');
-    this.loadLocalBinary = this.sandbox.stub(updates, 'loadLocalBinary').returns(Promise.reject(err));
-
-    var opts = {
-      lanPrefer: true,
-      'openwrt-path': 'somepath/foo',
-      'firmware-path': 'somepath/bar',
-    };
-
-    controller.update(opts)
-      .then(() => {
-        test.ok(false, 'Update should not resolve with invalid binary paths');
-        test.done();
-      })
-      .catch((deliveredErr) => {
-        test.deepEqual(deliveredErr, err);
-        // It should attempt to fetch a build
-        test.equal(this.loadLocalBinary.callCount, 2);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      });
-  },
-  onlyFirmwareImageUpdate(test) {
-    test.expect(3);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    this.loadLocalBinary = this.sandbox.stub(updates, 'loadLocalBinary').returns(Promise.resolve(Buffer.alloc(0)));
-
-    var opts = {
-      lanPrefer: true,
-      'firmware-path': 'somepath/bar',
-    };
-
-    controller.update(opts)
-      .then(() => {
-        // It should attempt to fetch a build
-        test.equal(this.loadLocalBinary.callCount, 1);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      })
-      .catch(() => {
-        test.ok(false, 'It should update from local binary paths');
-        test.done();
-      });
-  },
-  onlyOpenWRTImageUpdate(test) {
-    test.expect(3);
-
-    // Create a Tessel sim
-    this.tessel = TesselSimulator({
-      type: 'USB',
-      end: () => Promise.resolve()
-    });
-
-    this.loadLocalBinary = this.sandbox.stub(updates, 'loadLocalBinary').returns(Promise.resolve(Buffer.alloc(0)));
-
-    var opts = {
-      lanPrefer: true,
-      'openwrt-path': 'somepath/foo',
-    };
-
-    controller.update(opts)
-      .then(() => {
-        // It should attempt to fetch a build
-        test.equal(this.loadLocalBinary.callCount, 1);
-        // We closed all open Tessel connections
-        test.equal(this.closeTesselConnections.callCount, 1);
-        // We called the close function with an array
-        test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
-        test.done();
-      })
-      .catch(() => {
-        test.ok(false, 'It should update from local binary paths');
-        test.done();
-      });
-  }
+	setUp(done) {
+		this.sandbox = sinon.sandbox.create();
+		this.spinnerStart = this.sandbox.stub(log.spinner, 'start');
+		this.spinnerStop = this.sandbox.stub(log.spinner, 'stop');
+		this.warn = this.sandbox.stub(log, 'warn');
+		this.info = this.sandbox.stub(log, 'info');
+		this.basic = this.sandbox.stub(log, 'basic');
+
+		this.tessel = TesselSimulator();
+
+		this.getTessel = this.sandbox.stub(Tessel, 'get').callsFake((opts) => {
+			this.tessel.setLANConnectionPreference(opts.lanPrefer);
+			return Promise.resolve(this.tessel);
+		});
+
+		this.update = this.sandbox
+			.stub(Tessel.prototype, 'update')
+			.callsFake(() => Promise.resolve());
+
+		this.fetchCurrentBuildInfo = this.sandbox
+			.stub(Tessel.prototype, 'fetchCurrentBuildInfo')
+			.callsFake(() => {
+				return Promise.resolve('9a85c84f5a03c715908921baaaa9e7397985bc7f');
+			});
+
+		// resolve requestBuildList with a copy of the stubbed data, otherwise the original stub is mutated when sorted
+		this.requestBuildList = this.sandbox
+			.stub(updates, 'requestBuildList')
+			.callsFake(() => Promise.resolve(builds.slice()));
+
+		this.updateTesselWithVersion = this.sandbox.spy(
+			controller,
+			'updateTesselWithVersion',
+		);
+		this.closeTesselConnections = this.sandbox.spy(
+			controller,
+			'closeTesselConnections',
+		);
+
+		this.processExit = this.sandbox.stub(process, 'exit');
+		done();
+	},
+
+	tearDown(done) {
+		this.sandbox.restore();
+		this.tessel.mockClose();
+
+		// If builds were reversed, fix them.
+		if (builds[0].version === '0.0.1') {
+			builds.reverse();
+		}
+		done();
+	},
+
+	listBuilds(test) {
+		test.expect(7);
+
+		controller
+			.printAvailableUpdates()
+			.then(() => {
+				test.equal(this.requestBuildList.callCount, 1);
+				// Print info that these are log
+				// 'Latest builds:'
+				test.equal(this.info.callCount, 1);
+				// Print each version out
+				// `Version: ${build.version}\nPublished: ${published}\n${build.sha}\n`
+				test.equal(this.basic.callCount, 2);
+
+				const firstCallArgs = this.basic.getCall(0).args[0];
+				test.equal(firstCallArgs.startsWith('Version: 0.0.1'), true);
+				test.equal(firstCallArgs.includes(builds[1].sha), true);
+
+				const secondCallArgs = this.basic.getCall(1).args[0];
+				test.equal(secondCallArgs.startsWith('Version: 0.0.0'), true);
+				test.equal(secondCallArgs.includes(builds[0].sha), true);
+
+				// Finish
+				test.done();
+			})
+			.catch((error) => {
+				test.ok(false, `printAvailableUpdates failed: ${error.toString()}`);
+				test.done();
+			});
+	},
+
+	listBuildFetchError(test) {
+		test.expect(2);
+
+		var errMessage = 'Could not fetch builds';
+
+		this.requestBuildList.restore();
+		this.requestBuildList = this.sandbox
+			.stub(updates, 'requestBuildList')
+			.callsFake(function () {
+				return Promise.reject(new Error(errMessage));
+			});
+
+		controller
+			.printAvailableUpdates()
+			.then(() => {
+				test.equal(true, false, 'Build fetch should have failed.');
+				test.done();
+			})
+			.catch((error) => {
+				// We tried to fetch the builds
+				test.equal(this.requestBuildList.callCount, 1);
+				// But it failed with the erroror message we specified
+				test.equal(error.message, errMessage);
+				test.done();
+			});
+	},
+
+	buildOptionValid(test) {
+		test.expect(9);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		var binaries = {
+			firmware: Buffer.alloc(0),
+			openwrt: Buffer.alloc(0),
+		};
+
+		this.fetchBuild = this.sandbox
+			.stub(updates, 'fetchBuild')
+			.callsFake(function () {
+				return Promise.resolve(binaries);
+			});
+
+		var opts = {
+			version: '0.0.1',
+			lanPrefer: true,
+		};
+		controller
+			.update(opts)
+			.then(() => {
+				// We have to fetch the build list to figure out what the sha is of this version
+				test.equal(this.requestBuildList.callCount, 1);
+				// We did fetch the specified build
+				test.equal(this.fetchBuild.callCount, 1);
+				// It was called with the correct args
+				test.deepEqual(this.fetchBuild.lastCall.args[0], builds[1]);
+				// We fetched the Tessel to update
+				test.equal(this.getTessel.callCount, 1);
+				// The Tessel was updated
+				test.equal(this.update.callCount, 1);
+				// The update used the appropriate binaries
+				test.equal(this.update.calledWith(opts, binaries), true);
+				// Then the Tessel was closed
+				test.equal(this.tessel.closed, true);
+				// We closed all open Tessel connections
+				test.equal(this.closeTesselConnections.callCount, 1);
+				// We called the close function with an array
+				test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+				test.done();
+			})
+			.catch((error) => {
+				test.ok(false, `update failed: ${error.toString()}`);
+				test.done();
+			});
+	},
+
+	buildOptionInvalid(test) {
+		test.expect(3);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		var errMessage = 'No such build exists';
+
+		this.fetchBuild = this.sandbox
+			.stub(updates, 'fetchBuild')
+			.callsFake(function () {
+				return Promise.reject(new Error(errMessage));
+			});
+
+		var opts = {
+			version: '0.0.1',
+		};
+		controller.update(opts).catch((error) => {
+			// We attempted to fetch a build
+			test.equal(this.fetchBuild.callCount, 1);
+			// But it failed with the error we specified
+			test.equal(error.message, errMessage);
+			// We need to close all open Tessel connections
+			test.equal(this.closeTesselConnections.callCount, 1);
+			test.done();
+		});
+	},
+
+	buildLatest(test) {
+		test.expect(8);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		var binaries = {
+			firmware: Buffer.alloc(0),
+			openwrt: Buffer.alloc(0),
+		};
+
+		this.fetchBuild = this.sandbox
+			.stub(updates, 'fetchBuild')
+			.callsFake(function () {
+				return Promise.resolve(binaries);
+			});
+
+		this.fetchCurrentBuildInfo.restore();
+		this.fetchCurrentBuildInfo = this.sandbox
+			.stub(Tessel.prototype, 'fetchCurrentBuildInfo')
+			.callsFake(function () {
+				return Promise.resolve('ac4d8d8a5bfd671f7f174c2eaa258856bd82fe29');
+			});
+
+		var opts = {
+			lanPrefer: true,
+		};
+		controller
+			.update(opts)
+			.then(() => {
+				// Make sure we checked what the Tessel version is currently at
+				test.equal(this.fetchCurrentBuildInfo.callCount, 1);
+				// We fetched only one build
+				test.equal(this.fetchBuild.callCount, 1);
+				// It was the latest build
+				test.equal(this.fetchBuild.calledWith(builds[1]), true);
+				// Update Tessel was successfully called
+				test.equal(this.update.callCount, 1);
+				// It was provided the binaries
+				test.equal(this.update.calledWith(opts, binaries), true);
+				// Then Tessel was closed
+				test.equal(this.tessel.closed, true);
+				// We closed all open Tessel connections
+				test.equal(this.closeTesselConnections.callCount, 1);
+				// We called the close function with an array
+				test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+				test.done();
+			})
+			.catch((error) => {
+				test.ok(false, `update failed: ${error.toString()}`);
+				test.done();
+			});
+	},
+
+	buildLatestAlreadyCurrent(test) {
+		test.expect(7);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		var binaries = {
+			firmware: Buffer.alloc(0),
+			openwrt: Buffer.alloc(0),
+		};
+
+		this.fetchBuild = this.sandbox
+			.stub(updates, 'fetchBuild')
+			.callsFake(function () {
+				return Promise.resolve(binaries);
+			});
+
+		var opts = {
+			lanPrefer: true,
+		};
+		controller.update(opts).then(() => {
+			// Make sure we checked what the Tessel version is currently at
+			test.equal(this.fetchCurrentBuildInfo.callCount, 1);
+			// We fetched the build list once
+			test.equal(this.requestBuildList.callCount, 1);
+			// We didn't fetch any builds because Tessel is already up to date
+			test.equal(this.fetchBuild.callCount, 0);
+			// Update Tessel was not called because it was already up to date
+			test.equal(this.update.callCount, 0);
+			// Then Tessel was closed
+			test.equal(this.tessel.closed, true);
+			// We closed all open Tessel connections
+			test.equal(this.closeTesselConnections.callCount, 1);
+			// We called the close function with an array
+			test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+			test.done();
+		});
+	},
+
+	buildLatestUpdateFailed(test) {
+		test.expect(7);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		var binaries = {
+			firmware: Buffer.alloc(0),
+			openwrt: Buffer.alloc(0),
+		};
+
+		this.fetchBuild = this.sandbox
+			.stub(updates, 'fetchBuild')
+			.callsFake(function () {
+				return Promise.resolve(binaries);
+			});
+
+		this.fetchCurrentBuildInfo.restore();
+		this.fetchCurrentBuildInfo = this.sandbox
+			.stub(Tessel.prototype, 'fetchCurrentBuildInfo')
+			.callsFake(function () {
+				return Promise.resolve('ac4d8d8a5bfd671f7f174c2eaa258856bd82fe29');
+			});
+
+		var errMessage =
+			'Something absolutely dreadful happened. Your Tessel is bricked.';
+		this.update.restore();
+		this.update = this.sandbox
+			.stub(Tessel.prototype, 'update')
+			.callsFake(() => {
+				return Promise.reject(new Error(errMessage));
+			});
+
+		var opts = {
+			lanPrefer: true,
+		};
+		controller.update(opts).catch((error) => {
+			// We fetched only one build
+			test.equal(this.fetchBuild.callCount, 1);
+			// It was the latest build
+			test.equal(this.fetchBuild.calledWith(builds[1]), true);
+			// Update Tessel was not called because it was already up to date
+			test.equal(this.update.callCount, 1);
+			// The update failed with our error message
+			test.equal(error.message, errMessage);
+			// Then Tessel was closed
+			test.equal(this.tessel.closed, true);
+			// We closed all open Tessel connections
+			test.equal(this.closeTesselConnections.callCount, 1);
+			// We called the close function with an array
+			test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+			test.done();
+		});
+	},
+
+	buildLatestForce(test) {
+		test.expect(7);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		var binaries = {
+			firmware: Buffer.alloc(0),
+			openwrt: Buffer.alloc(0),
+		};
+
+		this.fetchBuild = this.sandbox
+			.stub(updates, 'fetchBuild')
+			.callsFake(function () {
+				return Promise.resolve(binaries);
+			});
+
+		var opts = {
+			force: true,
+			lanPrefer: true,
+		};
+
+		controller
+			.update(opts)
+			.then(() => {
+				// We fetched only one build
+				test.equal(this.fetchBuild.callCount, 1);
+				// It was the latest build
+				test.equal(this.fetchBuild.calledWith(builds[1]), true);
+				// Update Tessel was not called because it was already up to date
+				test.equal(this.update.callCount, 1);
+				// It was provided the binaries
+				test.equal(this.update.calledWith(opts, binaries), true);
+				// Then Tessel was closed
+				test.equal(this.tessel.closed, true);
+				// We closed all open Tessel connections
+				test.equal(this.closeTesselConnections.callCount, 1);
+				// We called the close function with an array
+				test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+				test.done();
+			})
+			.catch((error) => {
+				test.ok(false, `update failed: ${error.toString()}`);
+				test.done();
+			});
+	},
+
+	buildLatestNoConfigSave(test) {
+		test.expect(8);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		var binaries = {
+			firmware: Buffer.alloc(0),
+			openwrt: Buffer.alloc(0),
+		};
+
+		this.fetchBuild = this.sandbox
+			.stub(updates, 'fetchBuild')
+			.callsFake(function () {
+				return Promise.resolve(binaries);
+			});
+
+		var opts = {
+			force: true,
+			lanPrefer: true,
+			n: true,
+		};
+
+		controller
+			.update(opts)
+			.then(() => {
+				// We fetched only one build
+				test.equal(this.fetchBuild.callCount, 1);
+				// It was the latest build
+				test.equal(this.fetchBuild.calledWith(builds[1]), true);
+				// Update Tessel was not called because it was already up to date
+				test.equal(this.update.callCount, 1);
+				// It was provided the binaries and options
+				test.equal(this.update.calledWith(opts, binaries), true);
+				// Provided Options match first parameter
+				test.deepEqual(this.update.lastCall.args[0], opts);
+				// Then Tessel was closed
+				test.equal(this.tessel.closed, true);
+				// We closed all open Tessel connections
+				test.equal(this.closeTesselConnections.callCount, 1);
+				// We called the close function with an array
+				test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+				test.done();
+			})
+			.catch((error) => {
+				test.ok(false, `update failed: ${error.toString()}`);
+				test.done();
+			});
+	},
+
+	explicitLatestDoesntImmediatelyUpdate(test) {
+		test.expect(3);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		var binaries = {
+			firmware: Buffer.alloc(0),
+			openwrt: Buffer.alloc(0),
+		};
+
+		this.fetchBuild = this.sandbox
+			.stub(updates, 'fetchBuild')
+			.callsFake(function () {
+				return Promise.resolve(binaries);
+			});
+
+		var opts = {
+			version: 'latest',
+			lanPrefer: true,
+		};
+
+		controller
+			.update(opts)
+			.then(() => {
+				test.equal(this.updateTesselWithVersion.callCount, 0);
+				// We closed all open Tessel connections
+				test.equal(this.closeTesselConnections.callCount, 1);
+				// We called the close function with an array
+				test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+				test.done();
+			})
+			.catch((error) => {
+				test.ok(false, `update failed: ${error.toString()}`);
+				test.done();
+			});
+	},
+
+	noVerifiedVersion(test) {
+		test.expect(2);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		var opts = {
+			version: 'x.x.x',
+			lanPrefer: true,
+		};
+		controller.update(opts).catch((error) => {
+			test.equal(
+				error,
+				'The requested build was not found. Please see the available builds with `t2 update -l`.',
+			);
+			// We need to close all open Tessel connections
+			test.equal(this.closeTesselConnections.callCount, 1);
+			test.done();
+		});
+	},
+
+	noVersionForcedUpdate(test) {
+		test.expect(4);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		this.fetchCurrentBuildInfo.restore();
+		this.fetchCurrentBuildInfo = this.sandbox
+			.stub(Tessel.prototype, 'fetchCurrentBuildInfo')
+			.callsFake(function () {
+				return Promise.reject(
+					new Error(
+						"[Error: cat: can't open '/etc/tessel-version': No such file or directory]",
+					),
+				);
+			});
+
+		var binaries = {
+			firmware: Buffer.alloc(0),
+			openwrt: Buffer.alloc(0),
+		};
+
+		this.fetchBuild = this.sandbox
+			.stub(updates, 'fetchBuild')
+			.callsFake(function () {
+				return Promise.resolve(binaries);
+			});
+
+		var opts = {
+			lanPrefer: true,
+		};
+		controller
+			.update(opts)
+			.then(() => {
+				// It should attempt to fetch a build
+				test.equal(this.fetchBuild.callCount, 1);
+				// We should be requesting the latest build
+				test.equal(this.fetchBuild.calledWith(builds[1]), true);
+				// We closed all open Tessel connections
+				test.equal(this.closeTesselConnections.callCount, 1);
+				// We called the close function with an array
+				test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+				test.done();
+			})
+			.catch(() => {
+				test.ok(
+					false,
+					'It should force an update if the file version is not found',
+				);
+				test.done();
+			});
+	},
+
+	noVersionUnknownError(test) {
+		test.expect(4);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		var unknownError = new Error('Something totally weird happened.');
+
+		this.fetchCurrentBuildInfo.restore();
+		this.fetchCurrentBuildInfo = this.sandbox
+			.stub(Tessel.prototype, 'fetchCurrentBuildInfo')
+			.callsFake(function () {
+				return Promise.reject(unknownError);
+			});
+
+		var binaries = {
+			firmware: Buffer.alloc(0),
+			openwrt: Buffer.alloc(0),
+		};
+
+		this.fetchBuild = this.sandbox
+			.stub(updates, 'fetchBuild')
+			.callsFake(function () {
+				return Promise.resolve(binaries);
+			});
+
+		var opts = {
+			lanPrefer: true,
+		};
+		controller
+			.update(opts)
+			.then(() => {
+				test.ok(false, 'It should throw an error if we get an unknown error');
+				test.done();
+			})
+			.catch((error) => {
+				// Make sure this error has the proper error message
+				test.equal(error.message, unknownError.message);
+				// It should not attempt to fetch any builds
+				test.equal(this.fetchBuild.callCount, 0);
+				// We closed all open Tessel connections
+				test.equal(this.closeTesselConnections.callCount, 1);
+				// We called the close function with an array
+				test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+				test.done();
+			});
+	},
+
+	properBuildCompare(test) {
+		// use builds where the string compare of the versions
+		// would lead to incorrect comparison ('0.0.7 > 0.0.10')
+		var mixedBuilds = [
+			{
+				sha: 'ac4d8d8a5bfd671f7f174c2eaa258856bd82fe29',
+				released: '2017-05-18T02:21:57.856Z',
+				version: '0.0.7',
+			},
+			{
+				sha: '9a85c84f5a03c715908921baaaa9e7397985bc7f',
+				released: '2017-08-12T03:01:57.856Z',
+				version: '0.0.10',
+			},
+		];
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		var binaries = {
+			firmware: Buffer.alloc(0),
+			openwrt: Buffer.alloc(0),
+		};
+
+		this.fetchCurrentBuildInfo.restore();
+		this.fetchCurrentBuildInfo = this.sandbox
+			.stub(Tessel.prototype, 'fetchCurrentBuildInfo')
+			.callsFake(function () {
+				// Resolve with earlier build (0.0.7)
+				return Promise.resolve(mixedBuilds[0].sha);
+			});
+
+		this.requestBuildList.restore();
+		this.requestBuildList = this.sandbox
+			.stub(updates, 'requestBuildList')
+			.callsFake(function () {
+				// Return our two mixed builds
+				return Promise.resolve(mixedBuilds);
+			});
+
+		this.fetchBuild = this.sandbox
+			.stub(updates, 'fetchBuild')
+			.callsFake(function () {
+				return Promise.resolve(binaries);
+			});
+
+		controller
+			.update({})
+			.then(() => {
+				// It should attempt to fetch a build
+				test.equal(this.fetchBuild.callCount, 1);
+				// We should be requesting the latest build
+				test.equal(this.fetchBuild.calledWith(mixedBuilds[1]), true);
+				test.done();
+			})
+			.catch(() => {
+				test.ok(
+					false,
+					'Update should not reject with valid options and builds.',
+				);
+				test.done();
+			});
+	},
+	updateWithLocalBuilds(test) {
+		test.expect(3);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		this.loadLocalBinary = this.sandbox
+			.stub(updates, 'loadLocalBinary')
+			.returns(Promise.resolve(Buffer.alloc(0)));
+
+		var opts = {
+			lanPrefer: true,
+			'openwrt-path': 'somepath/foo',
+			'firmware-path': 'somepath/bar',
+		};
+
+		controller
+			.update(opts)
+			.then(() => {
+				// It should attempt to fetch a build
+				test.equal(this.loadLocalBinary.callCount, 2);
+				// We closed all open Tessel connections
+				test.equal(this.closeTesselConnections.callCount, 1);
+				// We called the close function with an array
+				test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+				test.done();
+			})
+			.catch(() => {
+				test.ok(false, 'It should update from local binary paths');
+				test.done();
+			});
+	},
+	failLocalBadPath(test) {
+		test.expect(4);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		var err = new Error('Bad local binary path');
+		this.loadLocalBinary = this.sandbox
+			.stub(updates, 'loadLocalBinary')
+			.returns(Promise.reject(err));
+
+		var opts = {
+			lanPrefer: true,
+			'openwrt-path': 'somepath/foo',
+			'firmware-path': 'somepath/bar',
+		};
+
+		controller
+			.update(opts)
+			.then(() => {
+				test.ok(false, 'Update should not resolve with invalid binary paths');
+				test.done();
+			})
+			.catch((deliveredErr) => {
+				test.deepEqual(deliveredErr, err);
+				// It should attempt to fetch a build
+				test.equal(this.loadLocalBinary.callCount, 2);
+				// We closed all open Tessel connections
+				test.equal(this.closeTesselConnections.callCount, 1);
+				// We called the close function with an array
+				test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+				test.done();
+			});
+	},
+	onlyFirmwareImageUpdate(test) {
+		test.expect(3);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		this.loadLocalBinary = this.sandbox
+			.stub(updates, 'loadLocalBinary')
+			.returns(Promise.resolve(Buffer.alloc(0)));
+
+		var opts = {
+			lanPrefer: true,
+			'firmware-path': 'somepath/bar',
+		};
+
+		controller
+			.update(opts)
+			.then(() => {
+				// It should attempt to fetch a build
+				test.equal(this.loadLocalBinary.callCount, 1);
+				// We closed all open Tessel connections
+				test.equal(this.closeTesselConnections.callCount, 1);
+				// We called the close function with an array
+				test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+				test.done();
+			})
+			.catch(() => {
+				test.ok(false, 'It should update from local binary paths');
+				test.done();
+			});
+	},
+	onlyOpenWRTImageUpdate(test) {
+		test.expect(3);
+
+		// Create a Tessel sim
+		this.tessel = TesselSimulator({
+			type: 'USB',
+			end: () => Promise.resolve(),
+		});
+
+		this.loadLocalBinary = this.sandbox
+			.stub(updates, 'loadLocalBinary')
+			.returns(Promise.resolve(Buffer.alloc(0)));
+
+		var opts = {
+			lanPrefer: true,
+			'openwrt-path': 'somepath/foo',
+		};
+
+		controller
+			.update(opts)
+			.then(() => {
+				// It should attempt to fetch a build
+				test.equal(this.loadLocalBinary.callCount, 1);
+				// We closed all open Tessel connections
+				test.equal(this.closeTesselConnections.callCount, 1);
+				// We called the close function with an array
+				test.equal(Array.isArray(this.closeTesselConnections.args[0]), true);
+				test.done();
+			})
+			.catch(() => {
+				test.ok(false, 'It should update from local binary paths');
+				test.done();
+			});
+	},
 };
 
 exports['update-fetch'] = {
-  setUp(done) {
-    this.sandbox = sinon.sandbox.create();
-    this.spinnerStart = this.sandbox.stub(log.spinner, 'start');
-    this.spinnerStop = this.sandbox.stub(log.spinner, 'stop');
+	setUp(done) {
+		this.sandbox = sinon.sandbox.create();
+		this.spinnerStart = this.sandbox.stub(log.spinner, 'start');
+		this.spinnerStop = this.sandbox.stub(log.spinner, 'stop');
 
-    this.warn = this.sandbox.stub(log, 'warn');
-    this.info = this.sandbox.stub(log, 'info');
-    this.basic = this.sandbox.stub(log, 'basic');
+		this.warn = this.sandbox.stub(log, 'warn');
+		this.info = this.sandbox.stub(log, 'info');
+		this.basic = this.sandbox.stub(log, 'basic');
 
-    var mixedBuilds = [{
-      sha: 'ac4d8d8a5bfd671f7f174c2eaa258856bd82fe29',
-      released: '2017-05-18T02:21:57.856Z',
-      version: '0.0.0'
-    }, {
-      sha: '9a85c84f5a03c715908921baaaa9e7397985bc7f',
-      released: '2017-08-12T03:01:57.856Z',
-      version: '0.0.4'
-    }, {
-      sha: '789432897cd7829a988888b8843274cd8de89a98',
-      released: '2017-06-12T03:01:57.856Z',
-      version: '0.0.1'
-    }];
+		var mixedBuilds = [
+			{
+				sha: 'ac4d8d8a5bfd671f7f174c2eaa258856bd82fe29',
+				released: '2017-05-18T02:21:57.856Z',
+				version: '0.0.0',
+			},
+			{
+				sha: '9a85c84f5a03c715908921baaaa9e7397985bc7f',
+				released: '2017-08-12T03:01:57.856Z',
+				version: '0.0.4',
+			},
+			{
+				sha: '789432897cd7829a988888b8843274cd8de89a98',
+				released: '2017-06-12T03:01:57.856Z',
+				version: '0.0.1',
+			},
+		];
 
-    this.requestGet = this.sandbox.stub(request, 'get').callsFake(function(url, cb) {
-      cb(null, {
-        statusCode: 200
-      }, JSON.stringify(mixedBuilds));
-    });
+		this.requestGet = this.sandbox
+			.stub(request, 'get')
+			.callsFake(function (url, cb) {
+				cb(
+					null,
+					{
+						statusCode: 200,
+					},
+					JSON.stringify(mixedBuilds),
+				);
+			});
 
-    this.ifReachable = this.sandbox.stub(remote, 'ifReachable').callsFake(() => Promise.resolve());
-    this.processExit = this.sandbox.stub(process, 'exit');
-    done();
-  },
-  tearDown(done) {
-    this.sandbox.restore();
-    done();
-  },
-  buildsSorted(test) {
-    test.expect(4);
+		this.ifReachable = this.sandbox
+			.stub(remote, 'ifReachable')
+			.callsFake(() => Promise.resolve());
+		this.processExit = this.sandbox.stub(process, 'exit');
+		done();
+	},
+	tearDown(done) {
+		this.sandbox.restore();
+		done();
+	},
+	buildsSorted(test) {
+		test.expect(4);
 
-    // Request the out of order builds
-    updates.requestBuildList()
-      .then((builds) => {
-        // Ensure they were put back in order
-        test.ok(builds.length === 3);
-        test.ok(builds[0].version === '0.0.0');
-        test.ok(builds[1].version === '0.0.1');
-        test.ok(builds[2].version === '0.0.4');
-        test.done();
-      })
-      .catch(() => {
-        test.ok(false, 'An error was returned when the list fetch should succeed');
-        test.done();
-      });
-  }
+		// Request the out of order builds
+		updates
+			.requestBuildList()
+			.then((builds) => {
+				// Ensure they were put back in order
+				test.ok(builds.length === 3);
+				test.ok(builds[0].version === '0.0.0');
+				test.ok(builds[1].version === '0.0.1');
+				test.ok(builds[2].version === '0.0.4');
+				test.done();
+			})
+			.catch(() => {
+				test.ok(
+					false,
+					'An error was returned when the list fetch should succeed',
+				);
+				test.done();
+			});
+	},
 };
 
 exports['Tessel.update'] = {
-  setUp(done) {
-    this.sandbox = sinon.sandbox.create();
-    this.spinnerStart = this.sandbox.stub(log.spinner, 'start');
-    this.spinnerStop = this.sandbox.stub(log.spinner, 'stop');
+	setUp(done) {
+		this.sandbox = sinon.sandbox.create();
+		this.spinnerStart = this.sandbox.stub(log.spinner, 'start');
+		this.spinnerStop = this.sandbox.stub(log.spinner, 'stop');
 
-    this.warn = this.sandbox.stub(log, 'warn');
-    this.info = this.sandbox.stub(log, 'info');
-    this.basic = this.sandbox.stub(log, 'basic');
-    this.tessel = TesselSimulator();
+		this.warn = this.sandbox.stub(log, 'warn');
+		this.info = this.sandbox.stub(log, 'info');
+		this.basic = this.sandbox.stub(log, 'basic');
+		this.tessel = TesselSimulator();
 
-    this.tessel.connection.enterBootloader = function() {};
-    this.updateFirmware = sinon.spy(this.tessel, 'updateFirmware');
-    this.enterBootloader = sinon.stub(this.tessel.connection, 'enterBootloader').returns(Promise.resolve());
-    this.tessel.writeFlash = function() {};
-    this.writeFlash = sinon.stub(this.tessel, 'writeFlash').returns(Promise.resolve());
-    this.fixOldUpdateScripts = sinon.stub(this.tessel, 'fixOldUpdateScripts').returns(Promise.resolve());
+		this.tessel.connection.enterBootloader = function () {};
+		this.updateFirmware = sinon.spy(this.tessel, 'updateFirmware');
+		this.enterBootloader = sinon
+			.stub(this.tessel.connection, 'enterBootloader')
+			.returns(Promise.resolve());
+		this.tessel.writeFlash = function () {};
+		this.writeFlash = sinon
+			.stub(this.tessel, 'writeFlash')
+			.returns(Promise.resolve());
+		this.fixOldUpdateScripts = sinon
+			.stub(this.tessel, 'fixOldUpdateScripts')
+			.returns(Promise.resolve());
 
-    this.newImage = {
-      openwrt: Buffer.alloc(1),
-      firmware: Buffer.alloc(1)
-    };
+		this.newImage = {
+			openwrt: Buffer.alloc(1),
+			firmware: Buffer.alloc(1),
+		};
 
-    this.processExit = this.sandbox.stub(process, 'exit');
-    done();
-  },
-  tearDown(done) {
-    this.tessel.mockClose();
-    this.sandbox.restore();
-    done();
-  },
+		this.processExit = this.sandbox.stub(process, 'exit');
+		done();
+	},
+	tearDown(done) {
+		this.tessel.mockClose();
+		this.sandbox.restore();
+		done();
+	},
 
-  updatePathMustNotByPathNormalized(test) {
-    test.expect(4);
+	updatePathMustNotByPathNormalized(test) {
+		test.expect(4);
 
-    var updatePath = `/tmp/${updates.OPENWRT_BINARY_FILE}`;
+		var updatePath = `/tmp/${updates.OPENWRT_BINARY_FILE}`;
 
-    this.exec = this.sandbox.stub(this.tessel.connection, 'exec').callsFake((command, handler) => {
-      handler(null, this.tessel._rps);
-      setImmediate(() => {
-        this.tessel._rps.stdout.emit('data', Buffer.from('Upgrade completed'));
-        this.tessel._rps.emit('close');
-      });
-    });
+		this.exec = this.sandbox
+			.stub(this.tessel.connection, 'exec')
+			.callsFake((command, handler) => {
+				handler(null, this.tessel._rps);
+				setImmediate(() => {
+					this.tessel._rps.stdout.emit(
+						'data',
+						Buffer.from('Upgrade completed'),
+					);
+					this.tessel._rps.emit('close');
+				});
+			});
 
-    this.openStdinToFile = this.sandbox.stub(commands, 'openStdinToFile');
-    this.sysupgrade = this.sandbox.stub(commands, 'sysupgrade');
+		this.openStdinToFile = this.sandbox.stub(commands, 'openStdinToFile');
+		this.sysupgrade = this.sandbox.stub(commands, 'sysupgrade');
 
-    this.tessel.updateOpenWRT({}, this.newImage.openwrt).then(() => {
-      test.equal(this.openStdinToFile.callCount, 1);
-      test.equal(this.sysupgrade.callCount, 1);
-      test.equal(this.openStdinToFile.lastCall.args[0], updatePath);
-      test.equal(this.sysupgrade.lastCall.args[0], updatePath);
-      test.done();
-    }).catch((error) => {
-      test.ok(false, error);
-      test.done();
-    });
-  },
+		this.tessel
+			.updateOpenWRT({}, this.newImage.openwrt)
+			.then(() => {
+				test.equal(this.openStdinToFile.callCount, 1);
+				test.equal(this.sysupgrade.callCount, 1);
+				test.equal(this.openStdinToFile.lastCall.args[0], updatePath);
+				test.equal(this.sysupgrade.lastCall.args[0], updatePath);
+				test.done();
+			})
+			.catch((error) => {
+				test.ok(false, error);
+				test.done();
+			});
+	},
 
-  configurationShouldNotBeSaved(test) {
-    var updatePath = `/tmp/${updates.OPENWRT_BINARY_FILE}`;
+	configurationShouldNotBeSaved(test) {
+		var updatePath = `/tmp/${updates.OPENWRT_BINARY_FILE}`;
 
-    this.exec = this.sandbox.stub(this.tessel.connection, 'exec').callsFake((command, handler) => {
-      handler(null, this.tessel._rps);
-      setImmediate(() => {
-        this.tessel._rps.stdout.emit('data', Buffer.from('Upgrade completed'));
-        this.tessel._rps.emit('close');
-      });
-    });
+		this.exec = this.sandbox
+			.stub(this.tessel.connection, 'exec')
+			.callsFake((command, handler) => {
+				handler(null, this.tessel._rps);
+				setImmediate(() => {
+					this.tessel._rps.stdout.emit(
+						'data',
+						Buffer.from('Upgrade completed'),
+					);
+					this.tessel._rps.emit('close');
+				});
+			});
 
-    this.openStdinToFile = this.sandbox.stub(commands, 'openStdinToFile');
-    this.sysupgradeNoSaveConfig = this.sandbox.stub(commands, 'sysupgradeNoSaveConfig');
+		this.openStdinToFile = this.sandbox.stub(commands, 'openStdinToFile');
+		this.sysupgradeNoSaveConfig = this.sandbox.stub(
+			commands,
+			'sysupgradeNoSaveConfig',
+		);
 
-    this.tessel.updateOpenWRT({
-      n: true
-    }, this.newImage.openwrt).then(() => {
-      test.equal(this.openStdinToFile.callCount, 1);
-      test.equal(this.sysupgradeNoSaveConfig.callCount, 1);
-      test.equal(this.openStdinToFile.lastCall.args[0], updatePath);
-      test.equal(this.sysupgradeNoSaveConfig.lastCall.args[0], updatePath);
-      test.done();
-    }).catch((error) => {
-      test.ok(false, error);
-      test.done();
-    });
-  },
+		this.tessel
+			.updateOpenWRT(
+				{
+					n: true,
+				},
+				this.newImage.openwrt,
+			)
+			.then(() => {
+				test.equal(this.openStdinToFile.callCount, 1);
+				test.equal(this.sysupgradeNoSaveConfig.callCount, 1);
+				test.equal(this.openStdinToFile.lastCall.args[0], updatePath);
+				test.equal(this.sysupgradeNoSaveConfig.lastCall.args[0], updatePath);
+				test.done();
+			})
+			.catch((error) => {
+				test.ok(false, error);
+				test.done();
+			});
+	},
 
-  standardUpdate(test) {
-    // Set the amount of time Tessel waits for the OpenWRT update
-    // to complete to 1ms so we don't wait forever
-    Tessel.openWRTUpdateTime = 1;
-    var updatePath = `/tmp/${updates.OPENWRT_BINARY_FILE}`;
-    // The exec commands that should be run to update OpenWRT
-    var expectedCommands = [commands.openStdinToFile(updatePath), commands.sysupgrade(updatePath)];
-    // Which command is being written
-    var commandsWritten = 0;
-    // When we get a command
-    this.tessel._rps.on('control', (data) => {
-      // Switch based on the number of command this is
-      switch (commandsWritten) {
-        // If it's the first command
-        case 0:
-          // Ensure that it's attempting to write the openwrt image to /tmp
-          test.equal(data.toString(), expectedCommands[commandsWritten].join(' '));
-          // Once we receive stdin of the image
-          this.tessel._rps.on('stdin', (data) => {
-            // Ensure it's the proper image
-            test.deepEqual(data, this.newImage.openwrt);
-            // Close the process to continue with updates
-            this.tessel._rps.emit('close');
-          });
-          break;
-        case 1:
-          // Ensure that it's attempting to run sysupgrade
-          test.equal(data.toString(), expectedCommands[commandsWritten].join(' '));
-          // Emit that the upgrade has complete to continue
-          setImmediate(() => this.tessel._rps.stdout.push('Upgrade completed'));
-      }
+	standardUpdate(test) {
+		// Set the amount of time Tessel waits for the OpenWRT update
+		// to complete to 1ms so we don't wait forever
+		Tessel.openWRTUpdateTime = 1;
+		var updatePath = `/tmp/${updates.OPENWRT_BINARY_FILE}`;
+		// The exec commands that should be run to update OpenWRT
+		var expectedCommands = [
+			commands.openStdinToFile(updatePath),
+			commands.sysupgrade(updatePath),
+		];
+		// Which command is being written
+		var commandsWritten = 0;
+		// When we get a command
+		this.tessel._rps.on('control', (data) => {
+			// Switch based on the number of command this is
+			switch (commandsWritten) {
+				// If it's the first command
+				case 0:
+					// Ensure that it's attempting to write the openwrt image to /tmp
+					test.equal(
+						data.toString(),
+						expectedCommands[commandsWritten].join(' '),
+					);
+					// Once we receive stdin of the image
+					this.tessel._rps.on('stdin', (data) => {
+						// Ensure it's the proper image
+						test.deepEqual(data, this.newImage.openwrt);
+						// Close the process to continue with updates
+						this.tessel._rps.emit('close');
+					});
+					break;
+				case 1:
+					// Ensure that it's attempting to run sysupgrade
+					test.equal(
+						data.toString(),
+						expectedCommands[commandsWritten].join(' '),
+					);
+					// Emit that the upgrade has complete to continue
+					setImmediate(() => this.tessel._rps.stdout.push('Upgrade completed'));
+			}
 
-      commandsWritten++;
-    });
+			commandsWritten++;
+		});
 
-    // Begin the update
-    this.tessel.update({}, this.newImage)
-      // Update completed as expected
-      .then(() => {
-        test.equal(this.updateFirmware.callCount, 1);
-        test.equal(this.enterBootloader.callCount, 1);
-        test.equal(this.writeFlash.callCount, 1);
-        test.done();
-      })
-      .catch(() => {
-        test.ok(false, 'Update test failed with valid options and builds');
-        test.done();
-      });
-  }
+		// Begin the update
+		this.tessel
+			.update({}, this.newImage)
+			// Update completed as expected
+			.then(() => {
+				test.equal(this.updateFirmware.callCount, 1);
+				test.equal(this.enterBootloader.callCount, 1);
+				test.equal(this.writeFlash.callCount, 1);
+				test.done();
+			})
+			.catch(() => {
+				test.ok(false, 'Update test failed with valid options and builds');
+				test.done();
+			});
+	},
 };

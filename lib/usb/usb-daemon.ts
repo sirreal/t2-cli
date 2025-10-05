@@ -6,7 +6,7 @@ import async from 'async';
 import protocol from 'usb-daemon-parser';
 
 // Internal
-import {USBProcess} from './usb-process';
+import { USBProcess } from './usb-process';
 
 var MAX_PROCESS_ID = 255;
 
@@ -298,5 +298,5 @@ class ConnectionEntry {
 	}
 }
 
-const daemon =  new USBDaemon();
+const daemon = new USBDaemon();
 export { daemon, type USBDaemon };

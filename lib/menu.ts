@@ -18,27 +18,27 @@ controller.menu({
 var Menu = {};
 
 Menu.prompt = (setup) => {
-  var options = setup.prompt;
+	var options = setup.prompt;
 
-  if (options.type === 'list') {
-    options.choices.push('\tExit');
-  }
+	if (options.type === 'list') {
+		options.choices.push('\tExit');
+	}
 
-  // Enforce a customized prompt prefix
-  inquirer.prompt.prompts[options.type].prototype.prefix = (str) => {
-    // String() used to coerce an `undefined` to ''. Do not change.
-    return String(setup.prefix) + str;
-  };
+	// Enforce a customized prompt prefix
+	inquirer.prompt.prompts[options.type].prototype.prefix = (str) => {
+		// String() used to coerce an `undefined` to ''. Do not change.
+		return String(setup.prefix) + str;
+	};
 
-  return new Promise(function(resolve) {
-    inquirer.prompt([options], function(answer) {
-      if (setup.translate) {
-        resolve(setup.translate(answer));
-      } else {
-        resolve(answer);
-      }
-    });
-  });
+	return new Promise(function (resolve) {
+		inquirer.prompt([options], function (answer) {
+			if (setup.translate) {
+				resolve(setup.translate(answer));
+			} else {
+				resolve(answer);
+			}
+		});
+	});
 };
 
 module.exports = Menu;

@@ -17,7 +17,6 @@ global.Duplex = stream.Duplex;
 global.Stream = stream.Stream;
 global.Transform = stream.Transform;
 
-
 // Third Party Dependencies
 global.async = require('async');
 global.bindings = require('bindings');
@@ -43,10 +42,9 @@ global.ssh = require('ssh2');
 global.tags = require('common-tags');
 global.tar = require('tar');
 global.uglify = {
-  es: require('uglify-es'),
-  js: require('uglify-js'),
+	es: require('uglify-es'),
+	js: require('uglify-js'),
 };
-
 
 // Internal
 // ./lib/tessel/*
@@ -99,8 +97,6 @@ global.USB = usb.USB;
 global.Request = function Request() {};
 util.inherits(global.Request, global.Stream);
 
-
-
 // Deployment Utilities, shared across
 //
 // - test/unit/deploy.js
@@ -114,154 +110,159 @@ global.DEPLOY_FILE_JS = path.join(global.DEPLOY_DIR_JS, 'app.js');
 global.jsCodeContents = 'console.log("testing deploy");';
 global.jsCodeReference = Buffer.from(global.jsCodeContents);
 
-global.DEPLOY_DIR_RS = path.join(process.cwd(), 'test/unit/fixtures', 'rust-deploy-template');
+global.DEPLOY_DIR_RS = path.join(
+	process.cwd(),
+	'test/unit/fixtures',
+	'rust-deploy-template',
+);
 
+global.deployTestCode = function (tessel, opts, callback) {
+	// Create the temporary folder with example code
+	createTemporaryDeployCode().then(() => {
+		function closeAdvance(event) {
+			if (event === 'close') {
+				setImmediate(() => {
+					// Emit the close event to keep it going
+					tessel._rps.emit('close');
+				});
+			}
+		}
 
-global.deployTestCode = function(tessel, opts, callback) {
-  // Create the temporary folder with example code
-  createTemporaryDeployCode()
-    .then(() => {
+		// When we get a listener that the Tessel process needs to close before advancing
+		tessel._rps.on('newListener', closeAdvance);
 
-      function closeAdvance(event) {
-        if (event === 'close') {
-          setImmediate(() => {
-            // Emit the close event to keep it going
-            tessel._rps.emit('close');
-          });
-        }
-      }
-
-      // When we get a listener that the Tessel process needs to close before advancing
-      tessel._rps.on('newListener', closeAdvance);
-
-      // Actually deploy the script
-      tessel.deploy({
-          entryPoint: path.relative(process.cwd(), global.DEPLOY_FILE_JS),
-          push: opts.push,
-          single: opts.single
-        })
-        // If it finishes, it was successful
-        .then(() => {
-          tessel._rps.removeListener('newListener', closeAdvance);
-          callback();
-        })
-        // If not, there was an issue
-        .catch(callback);
-    });
+		// Actually deploy the script
+		tessel
+			.deploy({
+				entryPoint: path.relative(process.cwd(), global.DEPLOY_FILE_JS),
+				push: opts.push,
+				single: opts.single,
+			})
+			// If it finishes, it was successful
+			.then(() => {
+				tessel._rps.removeListener('newListener', closeAdvance);
+				callback();
+			})
+			// If not, there was an issue
+			.catch(callback);
+	});
 };
 
-global.createTemporaryDeployCode = function() {
-  return new Promise((resolve, reject) => {
-    mkdirp(global.DEPLOY_DIR_JS, (err) => {
-      if (err) {
-        return reject(err);
-      } else {
-        fs.writeFile(global.DEPLOY_FILE_JS, jsCodeContents, (err) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
-      }
-    });
-  });
+global.createTemporaryDeployCode = function () {
+	return new Promise((resolve, reject) => {
+		mkdirp(global.DEPLOY_DIR_JS, (err) => {
+			if (err) {
+				return reject(err);
+			} else {
+				fs.writeFile(global.DEPLOY_FILE_JS, jsCodeContents, (err) => {
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					}
+				});
+			}
+		});
+	});
 };
 
-global.deleteTemporaryDeployCode = function() {
-  return new Promise(function(resolve, reject) {
-    fs.remove(global.DEPLOY_DIR_JS, (err) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
-  });
+global.deleteTemporaryDeployCode = function () {
+	return new Promise(function (resolve, reject) {
+		fs.remove(global.DEPLOY_DIR_JS, (err) => {
+			if (err) {
+				reject(err);
+			} else {
+				resolve();
+			}
+		});
+	});
 };
 
-global.extract = function(bundle, callback) {
-  var parser = tar.Parse();
-  var entries = [];
+global.extract = function (bundle, callback) {
+	var parser = tar.Parse();
+	var entries = [];
 
-  parser.on('entry', (entry) => {
-    if (entry.type === 'File') {
-      entries.push(entry.path);
-    }
-  });
+	parser.on('entry', (entry) => {
+		if (entry.type === 'File') {
+			entries.push(entry.path);
+		}
+	});
 
-  parser.on('end', () => {
-    callback(null, entries);
-  });
+	parser.on('end', () => {
+		callback(null, entries);
+	});
 
-  parser.on('error', (error) => {
-    callback(error, null);
-  });
+	parser.on('error', (error) => {
+		callback(error, null);
+	});
 
-  parser.end(bundle);
+	parser.end(bundle);
 };
 
 global.processVersions = {
-  http_parser: '2.8.0',
-  node: '8.11.3',
-  v8: '6.2.414.54',
-  uv: '1.19.1',
-  zlib: '1.2.11',
-  ares: '1.10.1-DEV',
-  modules: '57',
-  nghttp2: '1.32.0',
-  napi: '3',
-  openssl: '1.0.2o',
-  icu: '60.1',
-  unicode: '10.0',
-  cldr: '32.0',
-  tz: '2017c',
+	http_parser: '2.8.0',
+	node: '8.11.3',
+	v8: '6.2.414.54',
+	uv: '1.19.1',
+	zlib: '1.2.11',
+	ares: '1.10.1-DEV',
+	modules: '57',
+	nghttp2: '1.32.0',
+	napi: '3',
+	openssl: '1.0.2o',
+	icu: '60.1',
+	unicode: '10.0',
+	cldr: '32.0',
+	tz: '2017c',
 };
 
-global.tesselBuilds = [{
-  released: '2016-09-21T19:40:32.992Z',
-  sha: '40b2b46a62a34b5a26170c75f7e717cea673d1eb',
-  version: '0.0.16'
-}, {
-  sha: '9a85c84f5a03c715908921baaaa9e7397985bc7f',
-  released: '2017-05-12T03:01:57.856Z',
-  version: '0.0.17'
-}];
+global.tesselBuilds = [
+	{
+		released: '2016-09-21T19:40:32.992Z',
+		sha: '40b2b46a62a34b5a26170c75f7e717cea673d1eb',
+		version: '0.0.16',
+	},
+	{
+		sha: '9a85c84f5a03c715908921baaaa9e7397985bc7f',
+		released: '2017-05-12T03:01:57.856Z',
+		version: '0.0.17',
+	},
+];
 
 global.networkInfo = {
-  phy: 'phy0',
-  ssid: 'skynet',
-  bssid: '05:95:E8:BD:E6:72',
-  country: '00',
-  mode: 'Client',
-  channel: 4,
-  frequency: 2427,
-  txpower: 20,
-  quality: 70,
-  quality_max: 70,
-  signal: -31,
-  bitrate: 21700,
-  encryption: {
-    enabled: true,
-    wpa: [2],
-    authentication: ['psk'],
-    ciphers: ['ccmp']
-  },
-  htmodes: ['HT20', 'HT40'],
-  hwmodes: ['b', 'g', 'n'],
-  hardware: {
-    name: 'Generic MAC80211'
-  },
-  ips: [
-    'wlan0     Link encap:Ethernet  HWaddr 03:B4:F8:44:C7:18  ',
-    '          inet addr:000.000.000.000  Bcast:000.000.000.000  Mask:255.255.255.0',
-    '          inet6 addr: fe80::3d70:c490:a0a4:2209/64 Scope:Link',
-    '          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1',
-    '          RX packets:0 errors:0 dropped:0 overruns:0 frame:0',
-    '          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0',
-    '          collisions:0 txqueuelen:1000 ',
-    '          RX bytes:58600 (57.2 KiB)  TX bytes:23960 (23.3 KiB)',
-    '',
-    '',
-  ]
+	phy: 'phy0',
+	ssid: 'skynet',
+	bssid: '05:95:E8:BD:E6:72',
+	country: '00',
+	mode: 'Client',
+	channel: 4,
+	frequency: 2427,
+	txpower: 20,
+	quality: 70,
+	quality_max: 70,
+	signal: -31,
+	bitrate: 21700,
+	encryption: {
+		enabled: true,
+		wpa: [2],
+		authentication: ['psk'],
+		ciphers: ['ccmp'],
+	},
+	htmodes: ['HT20', 'HT40'],
+	hwmodes: ['b', 'g', 'n'],
+	hardware: {
+		name: 'Generic MAC80211',
+	},
+	ips: [
+		'wlan0     Link encap:Ethernet  HWaddr 03:B4:F8:44:C7:18  ',
+		'          inet addr:000.000.000.000  Bcast:000.000.000.000  Mask:255.255.255.0',
+		'          inet6 addr: fe80::3d70:c490:a0a4:2209/64 Scope:Link',
+		'          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1',
+		'          RX packets:0 errors:0 dropped:0 overruns:0 frame:0',
+		'          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0',
+		'          collisions:0 txqueuelen:1000 ',
+		'          RX bytes:58600 (57.2 KiB)  TX bytes:23960 (23.3 KiB)',
+		'',
+		'',
+	],
 };
