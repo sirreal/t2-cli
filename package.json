@@ -3,6 +3,7 @@
 	"name": "t2-cli",
 	"version": "0.0.0",
 	"description": "[![Greenkeeper badge](https://badges.greenkeeper.io/tessel/t2-cli.svg)](https://greenkeeper.io/)",
+	"type": "module",
 	"main": "index.js",
 	"bin": "cargo-tessel.js",
 	"directories": {
