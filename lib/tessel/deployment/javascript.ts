@@ -864,7 +864,8 @@ exportables.compress = function (version, source, options) {
 		parse,
 	};
 
-	const result = uglify[version].minify(source, uOptions);
+	const result = { error: true };
+	// const result = uglify[version].minify(source, uOptions);
 
 	// If there was an error, let the source
 	// proceed uncompressed.
