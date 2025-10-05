@@ -66,6 +66,7 @@ TesselSeeker.prototype.start = function (opts) {
 			})
 			.catch((error) => {
 				debug(`Error opening device. ${error}`);
+                console.error(error);
 				if (tessel.connection.connectionType === 'USB') {
 					log.warn('Detected a Tessel that may be booting.');
 				}

@@ -1,5 +1,3 @@
-'use strict';
-
 function normalizeOptions(options) {
 	options = options || {};
 	options.binopts = options.binopts || [];

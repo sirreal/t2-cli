@@ -165,6 +165,7 @@ export default class USBProcess extends EventEmitter {
 
 // A wrapper on the Node Writable Stream to encapsulate stdin & control stream functionality
 class RemoteWritableStream extends stream.Writable {
+	private closed: boolean;
 	daemon: USBDaemon;
 
 	constructor(process, daemon: USBDaemon, writeHeaderFunc, closeHeaderFunc) {
@@ -315,6 +316,8 @@ class RemoteWritableStream extends stream.Writable {
 
 // A wrapper on the Node Readable Stream to encapsulate stdout & stderr stream functionality
 class RemoteReadableStream extends stream.Readable {
+	private closed: boolean;
+
 	daemon: USBDaemon;
 
 	constructor(process, daemon, ackHeaderFunc) {
