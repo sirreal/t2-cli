@@ -7,7 +7,7 @@ var Emitter = EventEmitter;
 // Third Party Dependencies
 // ...
 
-import fs from 'fs-extra';
+import fs from 'node:fs';
 import mdns from 'mdns-js';
 import shellescape from 'shell-escape';
 import ssh from 'ssh2';

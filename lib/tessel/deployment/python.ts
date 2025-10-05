@@ -2,7 +2,8 @@
 import * as path from 'node:path';
 
 // Third Party Dependencies
-import * as fs from 'fs-extra';
+import * as fs from 'node:fs';
+import * as fsExtra from 'fs-extra';
 import fsTemp from 'fs-temp';
 import Ignore from 'fstream-ignore';
 import * as tags from 'common-tags';
@@ -87,7 +88,7 @@ exportables.tarBundle = function (opts) {
 		throw new Error('--slim builds are not yet available for Python');
 	} else {
 		return new Promise((resolve, reject) => {
-			fs.copySync(globRoot, tempBundleDir);
+			fsExtra.copySync(globRoot, tempBundleDir);
 
 			var fstream = new Ignore({
 				basename: '',

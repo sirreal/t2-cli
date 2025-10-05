@@ -10,7 +10,8 @@ var Transform = stream.Transform;
 import blocks from 'block-stream2';
 import bz2 from 'unbzip2-stream';
 import createHash from 'sha.js';
-import * as fs from 'fs-extra';
+import * as fs from 'node:fs';
+import * as fsExtra from 'fs-extra';
 import fsTemp from 'fs-temp';
 import osenv from 'osenv';
 import Progress from 't2-progress';
@@ -129,7 +130,7 @@ function tmpdir() {
 			path: dir,
 			cleanup: () => {
 				try {
-					fs.removeSync(dir);
+					fsExtra.removeSync(dir);
 				} catch (e) {
 					// If the folder no longer exists, or if the remove operation throws
 					// some error, this is non-fatal to the user (the data will just
@@ -214,7 +215,9 @@ export function installTools() {
 					log.info(`Updating ${pkgname}...`);
 				}
 
-				fs.mkdirpSync(path.join(osenv.home(), '.tessel/sdk'));
+				fs.mkdirSync(path.join(osenv.home(), '.tessel/sdk'), {
+					recursive: true,
+				});
 				return extractTools(checksumVerify, path.basename(url), download(url));
 			});
 	});
@@ -247,7 +250,7 @@ export function installRustlib() {
 					log.info(`Updating ${pkgname}...`);
 				}
 
-				fs.mkdirpSync(SDK_PATHS.rustlib);
+				fs.mkdirSync(SDK_PATHS.rustlib, { recursive: true });
 				return extractRustlib(
 					checksumVerify,
 					path.basename(url),
@@ -313,9 +316,9 @@ function extract(
 
 					try {
 						// Remove the old SDK directory.
-						fs.removeSync(root);
+						fsExtra.removeSync(root);
 						// Move temporary directory to target destination.
-						fs.move(destdir.path, root, (error) => {
+						fsExtra.move(destdir.path, root, (error) => {
 							if (error) {
 								// Cleanup temp dir.
 								destdir.cleanup();
@@ -546,8 +549,8 @@ export const cargo = {
 	},
 	uninstall: () => {
 		return new Promise((resolve) => {
-			fs.remove(path.join(osenv.home(), '.tessel/rust'), () => {
-				fs.remove(path.join(osenv.home(), '.tessel/sdk'), () => {
+			fsExtra.remove(path.join(osenv.home(), '.tessel/rust'), () => {
+				fsExtra.remove(path.join(osenv.home(), '.tessel/sdk'), () => {
 					log.info('Tessel SDK uninstalled.');
 					resolve();
 				});

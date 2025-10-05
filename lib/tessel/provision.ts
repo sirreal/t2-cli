@@ -6,7 +6,7 @@ import * as util from 'node:util';
 
 // Third Party Dependencies
 import async from 'async';
-import * as fs from 'fs-extra';
+import * as fs from 'node:fs';
 import osenv from 'osenv';
 import * as sshpk from 'sshpk';
 

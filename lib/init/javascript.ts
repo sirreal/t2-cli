@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 
 // Third Party Dependencies
-import fs from 'fs-extra';
+import * as fs from 'node:fs';
+import * as fsExtra from 'fs-extra';
 import promzard from 'promzard';
 const PZ = promzard.PromZard;
 import NPM from 'npm';
@@ -93,7 +94,7 @@ exportables.getDependencies = async (pkg) => {
 	const authorInstalledDependencies = await Promise.all(
 		packageFiles.map(async (file) => {
 			const filePath = path.join(process.cwd(), file);
-			const content = JSON.parse(await fs.readFile(filePath, 'utf8'));
+			const content = JSON.parse(await fsExtra.readFile(filePath, 'utf8'));
 			if (content._requiredBy && content._requiredBy.includes('#USER')) {
 				return { name: content.name, version: content.version };
 			}
@@ -154,7 +155,7 @@ exportables.createSampleProgram = () => {
 				return resolve();
 			}
 
-			fs.copy(path.join(resources, filename), filename, () => {
+			fsExtra.copy(path.join(resources, filename), filename, () => {
 				log.info('Created "index.js"');
 				resolve();
 			});
@@ -169,7 +170,7 @@ exportables.createNpmrc = () => {
 			if (exists) {
 				return resolve();
 			}
-			fs.copy(path.join(resources, 'npmrc'), npmrc, () => {
+			fsExtra.copy(path.join(resources, 'npmrc'), npmrc, () => {
 				log.info('Created ".npmrc".');
 				resolve();
 			});
@@ -184,7 +185,7 @@ exportables.createTesselinclude = () => {
 			if (exists) {
 				return resolve();
 			}
-			fs.copy(path.join(resources, tesselinclude), tesselinclude, () => {
+			fsExtra.copy(path.join(resources, tesselinclude), tesselinclude, () => {
 				log.info('Created ".tesselinclude".');
 				resolve();
 			});
@@ -205,7 +206,7 @@ exportables.readPackageJson = () => {
 };
 
 exportables.writePackageJson = (data) => {
-	return new Promise((resolve, reject) => {
+	return new Promise<void>((resolve, reject) => {
 		fs.writeFile(packageJson, data, (err) => {
 			if (err) {
 				return reject(err);

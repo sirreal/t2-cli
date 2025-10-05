@@ -4,7 +4,7 @@ import * as querystring from 'node:querystring';
 import * as url from 'node:url';
 
 // Third Party Dependencies
-import * as fs from 'fs-extra';
+import * as fs from 'node:fs';
 import * as fstream from 'fstream';
 import * as tags from 'common-tags';
 import * as tar from 'tar';

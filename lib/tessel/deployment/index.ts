@@ -2,7 +2,7 @@
 import * as path from 'node:path';
 
 // Third Party Dependencies
-import * as fs from 'fs-extra';
+import * as fs from 'node:fs';
 
 import * as js from './javascript.ts';
 import * as py from './python.ts';

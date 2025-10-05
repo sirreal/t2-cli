@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 
 // Third Party Dependencies
-import fs from 'fs-extra';
+import * as fsExtra from 'fs-extra';
 import osenv from 'osenv';
 
 // Internal
@@ -28,7 +28,7 @@ export function drivers() {
 			var dest = `/etc/udev/rules.d/${tesselRules}`;
 
 			try {
-				fs.copySync(source, dest);
+				fsExtra.copySync(source, dest);
 			} catch (e) {
 				if (e.code === 'EACCES') {
 					log.error(`Could not write to ${dest}`);
@@ -65,23 +65,23 @@ export function homedir() {
 	var preferencesJson = path.join(userTesselDirectory, 'preferences.json');
 
 	return new Promise((resolve, reject) => {
-		fs.ensureDir(userTesselDirectory, (error) => {
+		fsExtra.ensureDir(userTesselDirectory, (error) => {
 			if (error) {
 				return reject(error);
 			}
 			log.info('Home directory verified.');
-			fs.ensureFile(preferencesJson, (error) => {
+			fsExtra.ensureFile(preferencesJson, (error) => {
 				if (error) {
 					return reject(error);
 				}
-				fs.readJson(preferencesJson, (error, contents) => {
+				fsExtra.readJson(preferencesJson, (error, contents) => {
 					let operation = 'verified';
 					if (error || contents === undefined) {
 						contents = {};
 						operation = 'initialized';
 					}
 
-					fs.outputJson(preferencesJson, contents, (error) => {
+					fsExtra.outputJson(preferencesJson, contents, (error) => {
 						if (error) {
 							return reject(error);
 						}

@@ -8,7 +8,8 @@ import * as zlib from 'node:zlib';
 
 // Third Party Dependencies
 import bindings from 'bindings';
-import * as fs from 'fs-extra';
+import * as fs from 'node:fs';
+import * as fsExtra from 'fs-extra';
 import fsTemp from 'fs-temp';
 import Ignore from 'fstream-ignore';
 import minimatch from 'minimatch';
@@ -51,7 +52,9 @@ var exportables = {
 		entry: 'index.js',
 		configuration: 'package.json',
 		checkConfiguration(pushdir, basename, program) {
-			var packageJson = fs.readJsonSync(path.join(pushdir, 'package.json'));
+			var packageJson = fsExtra.readJsonSync(
+				path.join(pushdir, 'package.json'),
+			);
 
 			/* istanbul ignore else */
 			if (packageJson.main) {
@@ -312,7 +315,7 @@ exportables.resolveBinaryModules = function (options) {
 					var url = urljoin(BINARY_SERVER_ROOT, tgz);
 
 					// Make a ~/.tessel/binaries/MODULE-NAME directory
-					fs.mkdirp(details.extractPath, () => {
+					fs.mkdir(details.extractPath, { recursive: true }, () => {
 						// wget the tgz, save as
 						// ~/.tessel/binaries/MODULE-NAME.tgz
 						var gunzip = zlib.createGunzip();
@@ -326,7 +329,7 @@ exportables.resolveBinaryModules = function (options) {
 								details.resolved = false;
 
 								// Remove extraction directory
-								fs.removeSync(details.extractPath);
+								fsExtra.removeSync(details.extractPath);
 
 								resolve();
 							}
@@ -426,7 +429,7 @@ exportables.injectBinaryModules = function (globRoot, tempBundlePath, options) {
 				}, tempTargetBinaryPath);
 
 				try {
-					fs.copySync(sourceBinaryPath, tempTargetBinaryPath);
+					fsExtra.copySync(sourceBinaryPath, tempTargetBinaryPath);
 					isCopied = true;
 				} catch (error) {
 					sourceBinaryPath = path.join(
@@ -436,7 +439,7 @@ exportables.injectBinaryModules = function (globRoot, tempBundlePath, options) {
 					);
 
 					try {
-						fs.copySync(sourceBinaryPath, tempTargetBinaryPath);
+						fsExtra.copySync(sourceBinaryPath, tempTargetBinaryPath);
 						isCopied = true;
 					} catch (error) {
 						exportables.logMissingBinaryModuleWarning(details);
@@ -446,7 +449,7 @@ exportables.injectBinaryModules = function (globRoot, tempBundlePath, options) {
 
 				if (isCopied) {
 					// Also ensure that package.json was copied.
-					fs.copySync(
+					fsExtra.copySync(
 						path.join(globRoot, details.modulePath, 'package.json'),
 						path.join(tempTargetModulePath, 'package.json'),
 					);
@@ -661,7 +664,7 @@ exportables.tarBundle = function (options) {
 							});
 						}
 
-						fs.outputFileSync(target, source);
+						fsExtra.outputFileSync(target, source);
 
 						written[target] = true;
 					});
@@ -674,7 +677,7 @@ exportables.tarBundle = function (options) {
 						includeFiles.forEach((file) => {
 							var target = path.join(tempBundleDir, file);
 							if (!written[target]) {
-								fs.copySync(path.join(globRoot, file), target);
+								fsExtra.copySync(path.join(globRoot, file), target);
 							}
 						});
 					}
@@ -682,7 +685,7 @@ exportables.tarBundle = function (options) {
 					// Disallowed files or directories are present
 					if (disallowedFiles.length) {
 						disallowedFiles.forEach((file) =>
-							fs.removeSync(path.join(tempBundleDir, file)),
+							fsExtra.removeSync(path.join(tempBundleDir, file)),
 						);
 					}
 
@@ -714,7 +717,7 @@ exportables.tarBundle = function (options) {
 									buffers.push(chunk);
 								})
 								.on('end', () => {
-									fs.remove(tempBundleDir, (error) => {
+									fsExtra.remove(tempBundleDir, (error) => {
 										if (error) {
 											reject(error);
 										} else {
@@ -731,7 +734,7 @@ exportables.tarBundle = function (options) {
 		return new Promise((resolve, reject) => {
 			// Copy the project to a temporary location.
 			// This allows us a safe way to "swap" binary modules.
-			fs.copySync(globRoot, tempBundleDir);
+			fsExtra.copySync(globRoot, tempBundleDir);
 
 			return exportables
 				.injectBinaryModules(globRoot, tempBundleDir, options)

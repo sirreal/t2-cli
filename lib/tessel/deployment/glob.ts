@@ -2,7 +2,7 @@
 import * as path from 'node:path';
 
 // Third Party Dependencies
-import fs from 'fs-extra';
+import fs from 'node:fs';
 import glob from 'glob';
 
 var exportables = {

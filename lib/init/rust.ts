@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 
 // Third Party Dependencies
-import fs from 'fs-extra';
+import fsExtra from 'fs-extra';
 
 // Internal
 import * as log from '../log.ts';
@@ -41,34 +41,42 @@ exportables.createSampleProgram = () => {
 		var dirAndMainRs = path.resolve(srcDir, mainRs);
 
 		// Generate the toml and the src file
-		fs.exists(srcDir, (exists) => {
+		fsExtra.exists(srcDir, (exists) => {
 			if (exists) {
 				return reject(new CargoExistsError(srcDir));
 			}
-			fs.exists(dirAndCargoToml, (exists) => {
+			fsExtra.exists(dirAndCargoToml, (exists) => {
 				if (exists) {
 					return reject(new CargoExistsError(dirAndCargoToml));
 				}
-				fs.mkdir(srcDir, (error) => {
+				fsExtra.mkdir(srcDir, (error) => {
 					if (error) {
 						return reject(new CreateError(srcDir, error));
 					}
 
-					fs.copy(path.join(resources, cargoToml), dirAndCargoToml, (error) => {
-						if (error) {
-							return reject(new CreateError(dirAndCargoToml, error));
-						}
-						log.info('Initialized Cargo project...');
-
-						fs.copy(path.join(resources, mainRs), dirAndMainRs, (error) => {
+					fsExtra.copy(
+						path.join(resources, cargoToml),
+						dirAndCargoToml,
+						(error) => {
 							if (error) {
-								return reject(new CreateError(dirAndMainRs, error));
+								return reject(new CreateError(dirAndCargoToml, error));
 							}
+							log.info('Initialized Cargo project...');
 
-							log.info(`Wrote "Hello World" to ${dirAndMainRs}`);
-							resolve();
-						});
-					});
+							fsExtra.copy(
+								path.join(resources, mainRs),
+								dirAndMainRs,
+								(error) => {
+									if (error) {
+										return reject(new CreateError(dirAndMainRs, error));
+									}
+
+									log.info(`Wrote "Hello World" to ${dirAndMainRs}`);
+									resolve();
+								},
+							);
+						},
+					);
 				});
 			});
 		});

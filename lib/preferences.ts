@@ -3,7 +3,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 // Third Party Dependencies
-import fs from 'fs-extra';
+import * as fs from 'node:fs';
+import * as fsExtra from 'fs-extra';
 
 // Internal
 import * as log from './log.ts';
@@ -32,7 +33,7 @@ Preferences.write = function (key, value) {
 			.then((contents) => {
 				contents = contents || {};
 				contents[key] = value;
-				fs.ensureFile(preferencesJson, (error) => {
+				fsExtra.ensureFile(preferencesJson, (error) => {
 					if (error) {
 						log.error('Error writing preference', key, value);
 						reject(error);
