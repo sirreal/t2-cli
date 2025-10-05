@@ -37,6 +37,8 @@
 
     // Recommended Options
     "strict": true,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
