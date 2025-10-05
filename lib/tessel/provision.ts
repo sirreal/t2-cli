@@ -15,6 +15,7 @@ import commands from './commands.ts';
 import * as log from '../log.ts';
 import RSA from './rsa-delegation.ts';
 import Tessel from './tessel.ts';
+import * as fsExtra from 'fs-extra/esm';
 
 var authPath = path.join(osenv.home(), '.tessel');
 var idrsa = 'id_rsa';
@@ -91,7 +92,7 @@ export function setupLocal(keyFile) {
 			sshpk.parseKey(key.exportKey('public'), 'pem').toString('ssh') + '\n';
 
 		// Make sure dir exists
-		fs.ensureDir(path.dirname(keyFile), function (err) {
+		fsExtra.ensureDir(path.dirname(keyFile), function (err) {
 			if (err) {
 				return reject(err);
 			}
