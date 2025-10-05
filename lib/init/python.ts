@@ -3,16 +3,18 @@
 // Third Party Dependencies
 
 // Internal
-var log = require('../log');
+var log = require('../log.ts');
 
 var exportables = {};
 
 exportables.meta = {
-  keywords: ['py', 'python']
+	keywords: ['py', 'python'],
 };
 
 exportables.generateProject = () => {
-  log.info(`Sorry, Python project generation isn't implemented yet. Contributions welcome!`);
+	log.info(
+		`Sorry, Python project generation isn't implemented yet. Contributions welcome!`,
+	);
 };
 
 module.exports = exportables;

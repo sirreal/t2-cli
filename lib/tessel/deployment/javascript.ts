@@ -19,18 +19,18 @@ var tags = require('common-tags');
 var tar = require('tar');
 var urljoin = require('url-join');
 var uglify = {
-  es: require('uglify-es'),
-  js: require('uglify-js'),
+	es: require('uglify-es'),
+	js: require('uglify-js'),
 };
 
 // Internal
-var glob = require('./glob');
-var lists = require('./lists/javascript');
-var log = require('../../log');
+var glob = require('./glob.ts');
+var lists = require('./lists/javascript.js');
+var log = require('../../log.ts');
 // Necessary to ensure that the next line has had the LOCAL_AUTH_PATH descriptor added.
-var provision = require('../provision'); // jshint ignore:line
-var remote = require('../../remote');
-var Tessel = require('../tessel');
+var provision = require('../provision.ts'); // jshint ignore:line
+var remote = require('../../remote.ts');
+var Tessel = require('../tessel.ts');
 // Temporarily deactivating the code that used this internal dep
 // var updates = require('../../update-fetch');
 
@@ -40,35 +40,35 @@ const BINARY_SERVER_ROOT = `http://${remote.PACKAGES_HOSTNAME}/npm/`;
 const BINARY_CACHE_PATH = path.join(Tessel.LOCAL_AUTH_PATH, 'binaries');
 
 var exportables = {
-  meta: {
-    name: 'javascript',
-    extname: 'js',
-    binary: 'node',
-    isFile: true,
-    entry: 'index.js',
-    configuration: 'package.json',
-    checkConfiguration(pushdir, basename, program) {
-      var packageJson = fs.readJsonSync(path.join(pushdir, 'package.json'));
+	meta: {
+		name: 'javascript',
+		extname: 'js',
+		binary: 'node',
+		isFile: true,
+		entry: 'index.js',
+		configuration: 'package.json',
+		checkConfiguration(pushdir, basename, program) {
+			var packageJson = fs.readJsonSync(path.join(pushdir, 'package.json'));
 
-      /* istanbul ignore else */
-      if (packageJson.main) {
-        basename = path.basename(program);
-        program = path.normalize(program.replace(basename, packageJson.main));
-      }
+			/* istanbul ignore else */
+			if (packageJson.main) {
+				basename = path.basename(program);
+				program = path.normalize(program.replace(basename, packageJson.main));
+			}
 
-      return {
-        basename,
-        program
-      };
-    },
-    shell(options) {
-      return tags.stripIndent `
+			return {
+				basename,
+				program,
+			};
+		},
+		shell(options) {
+			return tags.stripIndent`
         #!/bin/sh
         exec node ${options.binopts.join(' ')} /app/remote-script/${options.resolvedEntryPoint} ${options.subargs.join(' ')}
       `;
-    },
-  },
-  lists: lists,
+		},
+	},
+	lists: lists,
 };
 
 /*
@@ -77,18 +77,18 @@ exportables.preRun = function(tessel, options) {
 };
 */
 
-exportables.postRun = function(tessel, options) {
-  if (tessel.connection.connectionType === 'LAN') {
-    // Pipe input TO the remote process.
-    process.stdin.pipe(options.remoteProcess.stdin);
-    process.stdin.setRawMode(true);
-  }
+exportables.postRun = function (tessel, options) {
+	if (tessel.connection.connectionType === 'LAN') {
+		// Pipe input TO the remote process.
+		process.stdin.pipe(options.remoteProcess.stdin);
+		process.stdin.setRawMode(true);
+	}
 
-  return Promise.resolve();
+	return Promise.resolve();
 };
 
-exportables.logMissingBinaryModuleWarning = function(details) {
-  var warning = tags.stripIndent `
+exportables.logMissingBinaryModuleWarning = function (details) {
+	var warning = tags.stripIndent`
     Pre-compiled module is missing: ${details.name}@${details.version}.
     Please file an issue at https://github.com/tessel/t2-cli/issues/new with this warning.
 
@@ -101,349 +101,376 @@ exportables.logMissingBinaryModuleWarning = function(details) {
     3. The binary may be platform specific and impossible to compile for OpenWRT.
     `;
 
-  log.warn(warning.trim());
+	log.warn(warning.trim());
 };
 
-exportables.resolveBinaryModules = function(options) {
-  var cwd = process.cwd();
-  var target = options.target || cwd;
-  var relative = path.relative(cwd, target);
-  var globRoot = relative || target;
-  var abi = options.tessel.versions.modules;
-  var buildexp = process.platform.startsWith('win') ?
-    /(?:build\\(Debug|Release|bindings)\\)/ :
-    /(?:build\/(Debug|Release|bindings)\/)/;
+exportables.resolveBinaryModules = function (options) {
+	var cwd = process.cwd();
+	var target = options.target || cwd;
+	var relative = path.relative(cwd, target);
+	var globRoot = relative || target;
+	var abi = options.tessel.versions.modules;
+	var buildexp = process.platform.startsWith('win')
+		? /(?:build\\(Debug|Release|bindings)\\)/
+		: /(?:build\/(Debug|Release|bindings)\/)/;
 
-  binaryModulesUsed.clear();
+	binaryModulesUsed.clear();
 
-  return new Promise((resolve, reject) => {
-    // Find all modules that include a compiled binary
-    var patterns = ['node_modules/**/*.node', 'node_modules/**/binding.gyp'];
-    var binaries = glob.files(globRoot, patterns).reduce((bins, globPath) => {
-      // Gather information about each found module
-      var resolved = true;
-      var modulePath = bindings.getRoot(globPath);
-      var packageJson = require(path.join(globRoot, modulePath, 'package.json'));
-      var binName = path.basename(globPath);
-      var buildPath = path.normalize(globPath.replace(path.join(modulePath), '').replace(binName, ''));
-      var buildType = (function() {
-        var matches = buildPath.match(buildexp);
-        if (matches && matches.length) {
-          return matches[1];
-        }
-        return 'Release';
-      }());
+	return new Promise((resolve, reject) => {
+		// Find all modules that include a compiled binary
+		var patterns = ['node_modules/**/*.node', 'node_modules/**/binding.gyp'];
+		var binaries = glob.files(globRoot, patterns).reduce((bins, globPath) => {
+			// Gather information about each found module
+			var resolved = true;
+			var modulePath = bindings.getRoot(globPath);
+			var packageJson = require(
+				path.join(globRoot, modulePath, 'package.json'),
+			);
+			var binName = path.basename(globPath);
+			var buildPath = path.normalize(
+				globPath.replace(path.join(modulePath), '').replace(binName, ''),
+			);
+			var buildType = (function () {
+				var matches = buildPath.match(buildexp);
+				if (matches && matches.length) {
+					return matches[1];
+				}
+				return 'Release';
+			})();
 
-      // If the compiled module doesn't actually need a binary.node
-      // injected into the bundle, then there is nothing to do.
-      if (packageJson.tessel && packageJson.tessel.skipBinary) {
-        return bins;
-      }
+			// If the compiled module doesn't actually need a binary.node
+			// injected into the bundle, then there is nothing to do.
+			if (packageJson.tessel && packageJson.tessel.skipBinary) {
+				return bins;
+			}
 
-      if (buildType !== 'Release' && buildType !== 'Debug') {
-        buildType = 'Release';
-      }
+			if (buildType !== 'Release' && buildType !== 'Debug') {
+				buildType = 'Release';
+			}
 
-      if (binName.endsWith('.gyp')) {
+			if (binName.endsWith('.gyp')) {
+				// Check that there are no matching .node paths in the ALREADY PROCESSED paths
+				for (var i = 0; i < bins.length; i++) {
+					if (bins[i].modulePath === modulePath) {
+						// When the currently resolving binary module path has been found
+						// in the list of existing binary module paths that have already been
+						// accounted for, return immediately to continue to processing the
+						// found binary module path candidates.
+						//
+						// An example:
+						//
+						// [
+						//  "node_modules/bufferutil/build/Release/bufferutil.node",
+						//  "node_modules/bufferutil/binding.gyp",
+						// ]
+						//
+						// Note, the order will always be .node then .gyp
+						return bins;
+					}
+				}
 
-        // Check that there are no matching .node paths in the ALREADY PROCESSED paths
-        for (var i = 0; i < bins.length; i++) {
-          if (bins[i].modulePath === modulePath) {
+				// If unfound, then we have to dig around in the binding.gyp for the target_name
+				// to figure out the actual name of the .node file
+				//
+				// If you're interested in seeing just how much of a nightmare mess these
+				// files can be, take a look at this:
+				//
+				// https://github.com/nodejs/node-gyp/wiki/%22binding.gyp%22-files-out-in-the-wild
+				//
+				var bindingGypPath = path.join(globRoot, modulePath, binName);
+				var bindingGypData;
+				var bindingGypJson;
 
-            // When the currently resolving binary module path has been found
-            // in the list of existing binary module paths that have already been
-            // accounted for, return immediately to continue to processing the
-            // found binary module path candidates.
-            //
-            // An example:
-            //
-            // [
-            //  "node_modules/bufferutil/build/Release/bufferutil.node",
-            //  "node_modules/bufferutil/binding.gyp",
-            // ]
-            //
-            // Note, the order will always be .node then .gyp
-            return bins;
-          }
-        }
+				try {
+					// Sometimes people write really tidy binding.gyp files that are
+					// actually valid JSON, which is totally awesome!
+					bindingGypJson = require(bindingGypPath);
+				} catch (error) {
+					// ... Other times binding.gyp is an inconsistent mess, but it's still
+					// a valid Python data structure. So we can spawn a python to read it.
+					// Sounds gross, but there is no other clear way to do this.
+					bindingGypData =
+						exportables.resolveBinaryModules.readGypFileSync(bindingGypPath);
 
-        // If unfound, then we have to dig around in the binding.gyp for the target_name
-        // to figure out the actual name of the .node file
-        //
-        // If you're interested in seeing just how much of a nightmare mess these
-        // files can be, take a look at this:
-        //
-        // https://github.com/nodejs/node-gyp/wiki/%22binding.gyp%22-files-out-in-the-wild
-        //
-        var bindingGypPath = path.join(globRoot, modulePath, binName);
-        var bindingGypData;
-        var bindingGypJson;
+					try {
+						bindingGypJson = JSON.parse(bindingGypData);
+					} catch (error) {
+						// If this module's binding.gyp is missing, broken or otherwise
+						// unusable. There are too many failure modes here, no way to recover.
+						resolved = false;
+					}
+				}
 
-        try {
-          // Sometimes people write really tidy binding.gyp files that are
-          // actually valid JSON, which is totally awesome!
-          bindingGypJson = require(bindingGypPath);
-        } catch (error) {
-          // ... Other times binding.gyp is an inconsistent mess, but it's still
-          // a valid Python data structure. So we can spawn a python to read it.
-          // Sounds gross, but there is no other clear way to do this.
-          bindingGypData = exportables.resolveBinaryModules.readGypFileSync(bindingGypPath);
+				if (resolved) {
+					/* istanbul ignore else */
+					if (bindingGypJson && Array.isArray(bindingGypJson.targets)) {
+						// Anything that can't be covered by this will have to be
+						// dealt with as we encounter them and as they are reported.
+						binName = bindingGypJson.targets[0].target_name + '.node';
 
-          try {
-            bindingGypJson = JSON.parse(bindingGypData);
-          } catch (error) {
-            // If this module's binding.gyp is missing, broken or otherwise
-            // unusable. There are too many failure modes here, no way to recover.
-            resolved = false;
-          }
-        }
+						// Assume the most likely scenario first:
+						//
+						// build/Release
+						// build/Debug
+						//
+						buildPath = path.join('build', buildType);
 
-        if (resolved) {
-          /* istanbul ignore else */
-          if (bindingGypJson && Array.isArray(bindingGypJson.targets)) {
-            // Anything that can't be covered by this will have to be
-            // dealt with as we encounter them and as they are reported.
-            binName = bindingGypJson.targets[0].target_name + '.node';
+						// Unless there is a specific `binary.module_path`.
+						// Checking this only matters when the glob patterns
+						// didn't turn up a .node binary.
+						/* istanbul ignore if */
+						if (
+							packageJson.binary &&
+							/* istanbul ignore next */ packageJson.binary.module_path
+						) {
+							buildPath = path.normalize(packageJson.binary.module_path);
+							if (buildPath[0] === '.') {
+								buildPath = buildPath.slice(1);
+							}
+						}
+					}
+				}
+			}
 
-            // Assume the most likely scenario first:
-            //
-            // build/Release
-            // build/Debug
-            //
-            buildPath = path.join('build', buildType);
+			bins.push({
+				binName: binName,
+				buildPath: buildPath,
+				buildType: buildType,
+				globPath: globPath,
+				ignored: false,
+				name: packageJson.name,
+				modulePath: modulePath,
+				resolved: resolved,
+				version: packageJson.version,
+			});
 
-            // Unless there is a specific `binary.module_path`.
-            // Checking this only matters when the glob patterns
-            // didn't turn up a .node binary.
-            /* istanbul ignore if */
-            if (packageJson.binary && /* istanbul ignore next */ packageJson.binary.module_path) {
-              buildPath = path.normalize(packageJson.binary.module_path);
-              if (buildPath[0] === '.') {
-                buildPath = buildPath.slice(1);
-              }
-            }
-          }
-        }
-      }
+			return bins;
+		}, []);
 
-      bins.push({
-        binName: binName,
-        buildPath: buildPath,
-        buildType: buildType,
-        globPath: globPath,
-        ignored: false,
-        name: packageJson.name,
-        modulePath: modulePath,
-        resolved: resolved,
-        version: packageJson.version,
-      });
+		if (!binaries.length) {
+			resolve();
+		}
 
-      return bins;
-    }, []);
+		binaries.UNRESOLVED_BINARY_LIST = true;
 
-    if (!binaries.length) {
-      resolve();
-    }
+		// Using the discovered binaries, create a Promise to
+		// represent the request, receipt, and extraction process
+		// for each of them.
+		var requests = binaries.map((details) => {
+			return new Promise((resolve, reject) => {
+				// Example: serialport-4.0.1-Release-node-v46-linux-mipsel.tgz
+				var full = `${details.name}-${details.version}-${details.buildType}-node-v${abi}-linux-mipsel`;
+				var tgz = `${full}.tgz`;
+				var releasename = `${details.name}@${details.version}`;
 
-    binaries.UNRESOLVED_BINARY_LIST = true;
+				// Store the name of the path where this might already
+				// be cached, but will most certainly be cached once
+				// it has been resolved.
+				details.extractPath = path.join(BINARY_CACHE_PATH, full);
 
-    // Using the discovered binaries, create a Promise to
-    // represent the request, receipt, and extraction process
-    // for each of them.
-    var requests = binaries.map(details => {
-      return new Promise((resolve, reject) => {
+				// Sometimes a module will depend on other
+				// modules that in turn depend on the same modules
+				// as eachother. Since we only need one copy of a given
+				// module, resolve this entry without any further action.
+				//
+				// In cases where the modules are the same version,
+				// we'll shed the copy that's lower in the tree.
+				if (binaryModulesUsed.has(releasename)) {
+					let existing = binaryModulesUsed.get(releasename);
+					let a = existing.globPath.split('/').length;
+					let b = details.globPath.split('/').length;
 
-        // Example: serialport-4.0.1-Release-node-v46-linux-mipsel.tgz
-        var full = `${details.name}-${details.version}-${details.buildType}-node-v${abi}-linux-mipsel`;
-        var tgz = `${full}.tgz`;
-        var releasename = `${details.name}@${details.version}`;
+					// The current `details` module is higher up than
+					// the matched `existing` module...
+					if (b < a) {
+						// The module described in 'details' is higher up,
+						// use this instead. Since the binary has already
+						// been resolved and that has no directory location
+						// association, we can just switch the module described
+						// in 'existing' with the module described in 'details',
+						// and immediately resolve
+						binaryModulesUsed.set(releasename, details);
+					}
+					return resolve();
+				}
 
-        // Store the name of the path where this might already
-        // be cached, but will most certainly be cached once
-        // it has been resolved.
-        details.extractPath = path.join(BINARY_CACHE_PATH, full);
+				// Update running list of binary modules that
+				// this project is using.
+				binaryModulesUsed.set(releasename, details);
 
-        // Sometimes a module will depend on other
-        // modules that in turn depend on the same modules
-        // as eachother. Since we only need one copy of a given
-        // module, resolve this entry without any further action.
-        //
-        // In cases where the modules are the same version,
-        // we'll shed the copy that's lower in the tree.
-        if (binaryModulesUsed.has(releasename)) {
-          let existing = binaryModulesUsed.get(releasename);
-          let a = existing.globPath.split('/').length;
-          let b = details.globPath.split('/').length;
+				// If an extraction path already exists locally,
+				// resolve this entry without any further action.
+				if (fs.existsSync(details.extractPath)) {
+					return resolve();
+				} else {
+					//
+					// Request, receive, unzip, extract and resolve
+					//
+					var url = urljoin(BINARY_SERVER_ROOT, tgz);
 
-          // The current `details` module is higher up than
-          // the matched `existing` module...
-          if (b < a) {
-            // The module described in 'details' is higher up,
-            // use this instead. Since the binary has already
-            // been resolved and that has no directory location
-            // association, we can just switch the module described
-            // in 'existing' with the module described in 'details',
-            // and immediately resolve
-            binaryModulesUsed.set(releasename, details);
-          }
-          return resolve();
-        }
+					// Make a ~/.tessel/binaries/MODULE-NAME directory
+					fs.mkdirp(details.extractPath, () => {
+						// wget the tgz, save as
+						// ~/.tessel/binaries/MODULE-NAME.tgz
+						var gunzip = zlib.createGunzip();
+						var extract = tar.Extract({
+							path: details.extractPath,
+						});
 
-        // Update running list of binary modules that
-        // this project is using.
-        binaryModulesUsed.set(releasename, details);
+						gunzip.on('error', (error) => {
+							/* istanbul ignore else */
+							if (error.code === 'Z_DATA_ERROR') {
+								details.resolved = false;
 
-        // If an extraction path already exists locally,
-        // resolve this entry without any further action.
-        if (fs.existsSync(details.extractPath)) {
-          return resolve();
-        } else {
-          //
-          // Request, receive, unzip, extract and resolve
-          //
-          var url = urljoin(BINARY_SERVER_ROOT, tgz);
+								// Remove extraction directory
+								fs.removeSync(details.extractPath);
 
-          // Make a ~/.tessel/binaries/MODULE-NAME directory
-          fs.mkdirp(details.extractPath, () => {
-            // wget the tgz, save as
-            // ~/.tessel/binaries/MODULE-NAME.tgz
-            var gunzip = zlib.createGunzip();
-            var extract = tar.Extract({
-              path: details.extractPath,
-            });
+								resolve();
+							}
+						});
 
-            gunzip.on('error', (error) => {
-              /* istanbul ignore else */
-              if (error.code === 'Z_DATA_ERROR') {
-                details.resolved = false;
+						remote
+							.ifReachable(remote.PACKAGES_HOSTNAME)
+							.then(() => {
+								request({
+									url: url,
+									gzip: true,
+								})
+									.pipe(gunzip)
+									.pipe(extract)
+									.on('error', reject)
+									.on('end', () => {
+										// Once complete, the locally cached binary can
+										// be found in ~/.tessel/binaries
+										resolve();
+									});
+							})
+							.catch(reject);
+					});
+				}
+			});
+		});
 
-                // Remove extraction directory
-                fs.removeSync(details.extractPath);
-
-                resolve();
-              }
-            });
-
-            remote.ifReachable(remote.PACKAGES_HOSTNAME).then(() => {
-              request({
-                  url: url,
-                  gzip: true,
-                })
-                .pipe(gunzip)
-                .pipe(extract)
-                .on('error', reject)
-                .on('end', () => {
-                  // Once complete, the locally cached binary can
-                  // be found in ~/.tessel/binaries
-                  resolve();
-                });
-            }).catch(reject);
-          });
-        }
-      });
-    });
-
-    // Resolve this operation once all binary module requests have resolved
-    return Promise.all(requests).then(() => resolve(binaryModulesUsed)).catch(reject);
-  });
+		// Resolve this operation once all binary module requests have resolved
+		return Promise.all(requests)
+			.then(() => resolve(binaryModulesUsed))
+			.catch(reject);
+	});
 };
 
-exportables.resolveBinaryModules.readGypFileSync = function(gypfile) {
-  var python = process.env.PYTHON || 'python';
-  var program = `import ast, json; print json.dumps(ast.literal_eval(open("${gypfile}").read()));`;
-  var decoder = new StringDecoder('utf8');
-  var result = cp.spawnSync(python, ['-c', program]);
-  var output = result.output;
+exportables.resolveBinaryModules.readGypFileSync = function (gypfile) {
+	var python = process.env.PYTHON || 'python';
+	var program = `import ast, json; print json.dumps(ast.literal_eval(open("${gypfile}").read()));`;
+	var decoder = new StringDecoder('utf8');
+	var result = cp.spawnSync(python, ['-c', program]);
+	var output = result.output;
 
-  if (output == null) {
-    return '';
-  }
+	if (output == null) {
+		return '';
+	}
 
-  return output.reduce((accum, buffer) => {
-    if (buffer) {
-      accum += decoder.write(buffer);
-    }
-    return accum;
-  }, '');
+	return output.reduce((accum, buffer) => {
+		if (buffer) {
+			accum += decoder.write(buffer);
+		}
+		return accum;
+	}, '');
 };
 
-exportables.injectBinaryModules = function(globRoot, tempBundlePath, options) {
-  var binaryPathTranslations = lists.binaryPathTranslations['*'];
+exportables.injectBinaryModules = function (globRoot, tempBundlePath, options) {
+	var binaryPathTranslations = lists.binaryPathTranslations['*'];
 
-  return new Promise((resolve) => {
-    options = options || {};
+	return new Promise((resolve) => {
+		options = options || {};
 
-    if (options.single) {
-      return resolve();
-    }
+		if (options.single) {
+			return resolve();
+		}
 
-    // For every binary module in use...
-    binaryModulesUsed.forEach(details => {
-      /* istanbul ignore else */
-      if (details.resolved) {
-        var isCopied = false;
-        var translations = binaryPathTranslations.slice().concat(
-          lists.binaryPathTranslations[details.name] || []
-        );
-        var buildDir = details.buildPath.replace(path.dirname(details.buildPath), '');
-        var sourceBinaryPath = path.join(details.extractPath, buildDir, details.binName);
-        var tempTargetModulePath = path.join(tempBundlePath, details.modulePath);
-        var tempTargetBinaryPath = path.join(tempTargetModulePath, details.buildPath, details.binName);
+		// For every binary module in use...
+		binaryModulesUsed.forEach((details) => {
+			/* istanbul ignore else */
+			if (details.resolved) {
+				var isCopied = false;
+				var translations = binaryPathTranslations
+					.slice()
+					.concat(lists.binaryPathTranslations[details.name] || []);
+				var buildDir = details.buildPath.replace(
+					path.dirname(details.buildPath),
+					'',
+				);
+				var sourceBinaryPath = path.join(
+					details.extractPath,
+					buildDir,
+					details.binName,
+				);
+				var tempTargetModulePath = path.join(
+					tempBundlePath,
+					details.modulePath,
+				);
+				var tempTargetBinaryPath = path.join(
+					tempTargetModulePath,
+					details.buildPath,
+					details.binName,
+				);
 
-        sourceBinaryPath = translations.reduce((accum, translation) => {
-          return accum.replace(translation.find, translation.replace);
-        }, sourceBinaryPath);
+				sourceBinaryPath = translations.reduce((accum, translation) => {
+					return accum.replace(translation.find, translation.replace);
+				}, sourceBinaryPath);
 
-        tempTargetBinaryPath = translations.reduce((accum, translation) => {
-          return accum.replace(translation.find, translation.replace);
-        }, tempTargetBinaryPath);
+				tempTargetBinaryPath = translations.reduce((accum, translation) => {
+					return accum.replace(translation.find, translation.replace);
+				}, tempTargetBinaryPath);
 
-        try {
-          fs.copySync(sourceBinaryPath, tempTargetBinaryPath);
-          isCopied = true;
-        } catch (error) {
-          sourceBinaryPath = path.join(details.extractPath, details.buildType, details.binName);
+				try {
+					fs.copySync(sourceBinaryPath, tempTargetBinaryPath);
+					isCopied = true;
+				} catch (error) {
+					sourceBinaryPath = path.join(
+						details.extractPath,
+						details.buildType,
+						details.binName,
+					);
 
-          try {
-            fs.copySync(sourceBinaryPath, tempTargetBinaryPath);
-            isCopied = true;
-          } catch (error) {
-            exportables.logMissingBinaryModuleWarning(details);
-            log.error(error);
-          }
-        }
+					try {
+						fs.copySync(sourceBinaryPath, tempTargetBinaryPath);
+						isCopied = true;
+					} catch (error) {
+						exportables.logMissingBinaryModuleWarning(details);
+						log.error(error);
+					}
+				}
 
-        if (isCopied) {
-          // Also ensure that package.json was copied.
-          fs.copySync(
-            path.join(globRoot, details.modulePath, 'package.json'),
-            path.join(tempTargetModulePath, 'package.json')
-          );
-        }
-      } else {
-        // In the future we may allow users to log the ignored modules here
-        if (!details.ignored) {
-          exportables.logMissingBinaryModuleWarning(details);
-        }
-      }
-    });
+				if (isCopied) {
+					// Also ensure that package.json was copied.
+					fs.copySync(
+						path.join(globRoot, details.modulePath, 'package.json'),
+						path.join(tempTargetModulePath, 'package.json'),
+					);
+				}
+			} else {
+				// In the future we may allow users to log the ignored modules here
+				if (!details.ignored) {
+					exportables.logMissingBinaryModuleWarning(details);
+				}
+			}
+		});
 
-    // All binary modules have been replaced, resolve.
-    return resolve();
-  });
+		// All binary modules have been replaced, resolve.
+		return resolve();
+	});
 };
 
-exportables.preBundle = function(options) {
-
-  const npmrc = new Promise((resolve, reject) => {
-    //
-    // First we MUST ensure that .npmrc exists:
-    //
-    fs.exists(path.join(options.target, '.npmrc'), (exists) => {
-      if (exists) {
-        return resolve();
-      }
-      const warning = tags.stripIndents `This project is missing an ".npmrc" file!
+exportables.preBundle = function (options) {
+	const npmrc = new Promise((resolve, reject) => {
+		//
+		// First we MUST ensure that .npmrc exists:
+		//
+		fs.exists(path.join(options.target, '.npmrc'), (exists) => {
+			if (exists) {
+				return resolve();
+			}
+			const warning = tags.stripIndents`This project is missing an ".npmrc" file!
       To prepare your project for deployment, use the command:
 
         t2 init
@@ -453,294 +480,320 @@ exportables.preBundle = function(options) {
         t2 ${process.argv.slice(2).join(' ')}
 
       `;
-      reject(warning);
-    });
-  });
+			reject(warning);
+		});
+	});
 
-
-  return npmrc.then(() => options.tessel.fetchNodeProcessVersions())
-    .then(versions => {
-      options.tessel.versions = versions;
-      return exportables.resolveBinaryModules(options);
-    });
+	return npmrc
+		.then(() => options.tessel.fetchNodeProcessVersions())
+		.then((versions) => {
+			options.tessel.versions = versions;
+			return exportables.resolveBinaryModules(options);
+		});
 };
 
-exportables.tarBundle = function(options) {
-  var cwd = process.cwd();
-  var target = options.target || cwd;
-  var relative = path.relative(cwd, target);
-  var globRoot = relative || target;
-  var packer = tar.Pack({
-    noProprietary: true
-  });
-  var buffers = [];
+exportables.tarBundle = function (options) {
+	var cwd = process.cwd();
+	var target = options.target || cwd;
+	var relative = path.relative(cwd, target);
+	var globRoot = relative || target;
+	var packer = tar.Pack({
+		noProprietary: true,
+	});
+	var buffers = [];
 
-  if (options.full) {
-    options.slim = false;
-  }
+	if (options.full) {
+		options.slim = false;
+	}
 
-  var includeRules = glob.rules(target, '.tesselinclude')
-    .concat(lists.includes);
+	var includeRules = glob
+		.rules(target, '.tesselinclude')
+		.concat(lists.includes);
 
-  var includeFiles = glob.files(globRoot, includeRules);
-  var includeNegateRules = includeRules.reduce((rules, pattern) => {
-    if (pattern.indexOf('!') === 0) {
-      rules.push(pattern.slice(1));
-    }
-    return rules;
-  }, []);
+	var includeFiles = glob.files(globRoot, includeRules);
+	var includeNegateRules = includeRules.reduce((rules, pattern) => {
+		if (pattern.indexOf('!') === 0) {
+			rules.push(pattern.slice(1));
+		}
+		return rules;
+	}, []);
 
-  var ignoreRules = glob.rules(target, '.tesselignore')
-    .concat(includeNegateRules)
-    .concat(lists.ignores);
+	var ignoreRules = glob
+		.rules(target, '.tesselignore')
+		.concat(includeNegateRules)
+		.concat(lists.ignores);
 
-  var ignoreFiles = glob.files(globRoot, ignoreRules);
+	var ignoreFiles = glob.files(globRoot, ignoreRules);
 
-  var disallowedFiles = glob.files(globRoot, lists.disallowed);
+	var disallowedFiles = glob.files(globRoot, lists.disallowed);
 
-  var matchOptions = {
-    matchBase: true,
-    dot: true
-  };
+	var matchOptions = {
+		matchBase: true,
+		dot: true,
+	};
 
-  // Mark binary modules that should be ignored
-  binaryModulesUsed.forEach(details => {
-    ignoreRules.forEach(rule => {
-      /* istanbul ignore else */
-      if (exportables.minimatch(details.modulePath, rule, matchOptions)) {
-        details.ignored = true;
-        details.resolved = false;
-      }
-    });
-  });
+	// Mark binary modules that should be ignored
+	binaryModulesUsed.forEach((details) => {
+		ignoreRules.forEach((rule) => {
+			/* istanbul ignore else */
+			if (exportables.minimatch(details.modulePath, rule, matchOptions)) {
+				details.ignored = true;
+				details.resolved = false;
+			}
+		});
+	});
 
-  log.info('Building project.');
+	log.info('Building project.');
 
+	// Both the --slim and --full paths will use a copy of the
+	// project to bundle. This allows us to be destructive
+	// with the files, but without directly tampering with the
+	// project files themselves.
+	var tempBundleDir = fsTemp.mkdirSync();
 
-  // Both the --slim and --full paths will use a copy of the
-  // project to bundle. This allows us to be destructive
-  // with the files, but without directly tampering with the
-  // project files themselves.
-  var tempBundleDir = fsTemp.mkdirSync();
+	if (options.slim) {
+		return new Promise((resolve, reject) => {
+			var absRoot = path.resolve(globRoot);
+			// Setup for detecting "overlooked" assets (files, directories, etc.)
+			var common = [
+				'node_modules',
+				'package.json',
+				'.tesselinclude',
+				'.tesselignore',
+				options.resolvedEntryPoint,
+			];
+			// These will be compared against the dependency graph
+			var assets = fs
+				.readdirSync(globRoot)
+				.filter((entry) => common.indexOf(entry) === -1)
+				.map((entry) => path.join(globRoot, entry));
 
-  if (options.slim) {
-    return new Promise((resolve, reject) => {
-      var absRoot = path.resolve(globRoot);
-      // Setup for detecting "overlooked" assets (files, directories, etc.)
-      var common = [
-        'node_modules', 'package.json',
-        '.tesselinclude', '.tesselignore',
-        options.resolvedEntryPoint
-      ];
-      // These will be compared against the dependency graph
-      var assets = fs.readdirSync(globRoot)
-        .filter(entry => (common.indexOf(entry) === -1))
-        .map(entry => path.join(globRoot, entry));
+			// Initialize a project for dependency graphing
+			var entry = path.join(relative, options.resolvedEntryPoint);
+			var project = exportables.project({
+				entry: entry,
+				dirname: globRoot,
+			});
 
-      // Initialize a project for dependency graphing
-      var entry = path.join(relative, options.resolvedEntryPoint);
-      var project = exportables.project({
-        entry: entry,
-        dirname: globRoot,
-      });
+			project.on('error', (error) => reject(error));
 
-      project.on('error', error => reject(error));
+			// Remove the includeFiles from the ignoreFiles
+			ignoreFiles = ignoreFiles.filter(
+				(file) => includeFiles.indexOf(file) === -1,
+			);
 
-      // Remove the includeFiles from the ignoreFiles
-      ignoreFiles = ignoreFiles.filter(file => includeFiles.indexOf(file) === -1);
+			// Inform the project of files to exclude
+			project.exclude(
+				ignoreFiles.reduce((files, file) => {
+					files.push(path.normalize(file));
+					files.push(path.join(globRoot, file));
+					return files;
+				}, []),
+			);
 
-      // Inform the project of files to exclude
-      project.exclude(
-        ignoreFiles.reduce((files, file) => {
-          files.push(path.normalize(file));
-          files.push(path.join(globRoot, file));
-          return files;
-        }, [])
-      );
+			// Collect all files for the project
+			project.collect((error, dependencies) => {
+				if (error) {
+					return reject(error);
+				} else {
+					var written = {};
 
-      // Collect all files for the project
-      project.collect((error, dependencies) => {
-        if (error) {
-          return reject(error);
-        } else {
-          var written = {};
+					// 1. Move all dependency entries to the temp directory
+					dependencies.forEach((dependency) => {
+						var isJS = dependency.file.endsWith('.js');
+						var source = dependency.source;
+						var target = path.normalize(
+							dependency.file.replace(absRoot, tempBundleDir),
+						);
+						var compressionOptions =
+							lists.compressionOptions[dependency.packageName];
+						var isCompressionSafe =
+							!lists.compressionDisallowed[dependency.packageName];
+						var compressionVersion =
+							lists.compressionVersion[dependency.packageName] || 'es';
+						var isIgnored = false;
 
-          // 1. Move all dependency entries to the temp directory
-          dependencies.forEach(dependency => {
-            var isJS = dependency.file.endsWith('.js');
-            var source = dependency.source;
-            var target = path.normalize(dependency.file.replace(absRoot, tempBundleDir));
-            var compressionOptions = lists.compressionOptions[dependency.packageName];
-            var isCompressionSafe = !lists.compressionDisallowed[dependency.packageName];
-            var compressionVersion = lists.compressionVersion[dependency.packageName] || 'es';
-            var isIgnored = false;
+						// Last check against ignored files. This is necessary because
+						// the _entryPoint_ dirname might be further down from the project
+						// root dirname, which will prevent nested rules from being applied
+						ignoreFiles.forEach((file) => {
+							var target = path.join(absRoot, file);
+							if (target === dependency.file) {
+								isIgnored = true;
+							}
+						});
 
-            // Last check against ignored files. This is necessary because
-            // the _entryPoint_ dirname might be further down from the project
-            // root dirname, which will prevent nested rules from being applied
-            ignoreFiles.forEach(file => {
-              var target = path.join(absRoot, file);
-              if (target === dependency.file) {
-                isIgnored = true;
-              }
-            });
+						if (isIgnored) {
+							return;
+						}
 
-            if (isIgnored) {
-              return;
-            }
+						if (options.single && !dependency.entry) {
+							return;
+						}
 
-            if (options.single && !dependency.entry) {
-              return;
-            }
+						if (options.compress && isJS && isCompressionSafe) {
+							try {
+								source = exportables.compress(
+									compressionVersion,
+									source,
+									compressionOptions,
+								);
+							} catch (error) {
+								reject(error);
+							}
+						}
 
-            if (options.compress && isJS && isCompressionSafe) {
-              try {
-                source = exportables.compress(compressionVersion, source, compressionOptions);
-              } catch (error) {
-                reject(error);
-              }
-            }
+						if (assets.length) {
+							assets = assets.filter((asset) => {
+								// If the asset was included in the dependency graph, then it can
+								// be removed from the potentially overlooked assets.
+								if (
+									dependency.file === asset ||
+									dependency.file.includes(asset) ||
+									path.dirname(dependency.file) === path.dirname(asset)
+								) {
+									return false;
+								}
+								return true;
+							});
+						}
 
-            if (assets.length) {
-              assets = assets.filter(asset => {
-                // If the asset was included in the dependency graph, then it can
-                // be removed from the potentially overlooked assets.
-                if ((dependency.file === asset || dependency.file.includes(asset)) ||
-                  path.dirname(dependency.file) === path.dirname(asset)) {
-                  return false;
-                }
-                return true;
-              });
-            }
+						fs.outputFileSync(target, source);
 
-            fs.outputFileSync(target, source);
+						written[target] = true;
+					});
 
-            written[target] = true;
-          });
+					// 2. Copy any files that matched all .tesselinclude patterns,
+					//    where the file in question was actually ignored due to
+					//    an ignore rule. Ultimately, .tesselinclude has the final
+					//    word on any file's inclusion/exclusion
+					if (!options.single) {
+						includeFiles.forEach((file) => {
+							var target = path.join(tempBundleDir, file);
+							if (!written[target]) {
+								fs.copySync(path.join(globRoot, file), target);
+							}
+						});
+					}
 
-          // 2. Copy any files that matched all .tesselinclude patterns,
-          //    where the file in question was actually ignored due to
-          //    an ignore rule. Ultimately, .tesselinclude has the final
-          //    word on any file's inclusion/exclusion
-          if (!options.single) {
-            includeFiles.forEach(file => {
-              var target = path.join(tempBundleDir, file);
-              if (!written[target]) {
-                fs.copySync(path.join(globRoot, file), target);
-              }
-            });
-          }
+					// Disallowed files or directories are present
+					if (disallowedFiles.length) {
+						disallowedFiles.forEach((file) =>
+							fs.removeSync(path.join(tempBundleDir, file)),
+						);
+					}
 
-          // Disallowed files or directories are present
-          if (disallowedFiles.length) {
-            disallowedFiles.forEach(file => fs.removeSync(path.join(tempBundleDir, file)));
-          }
+					if (assets.length) {
+						log.warn(
+							'Some assets in this project were not deployed (see: t2 run --help)',
+						);
+					}
 
-          if (assets.length) {
-            log.warn('Some assets in this project were not deployed (see: t2 run --help)');
-          }
+					exportables
+						.injectBinaryModules(globRoot, tempBundleDir, options)
+						.then(() => {
+							var fstream = new Reader({
+								path: tempBundleDir,
+								type: 'Directory',
+							});
 
-          exportables.injectBinaryModules(globRoot, tempBundleDir, options)
-            .then(() => {
-              var fstream = new Reader({
-                path: tempBundleDir,
-                type: 'Directory',
-              });
+							fstream.on('entry', (entry) => {
+								entry.root = {
+									path: entry.path,
+								};
+							});
 
-              fstream.on('entry', entry => {
-                entry.root = {
-                  path: entry.path
-                };
-              });
+							fstream.on('error', (error) => reject(error));
 
-              fstream.on('error', error => reject(error));
+							fstream
+								.pipe(packer)
+								.on('data', (chunk) => {
+									buffers.push(chunk);
+								})
+								.on('end', () => {
+									fs.remove(tempBundleDir, (error) => {
+										if (error) {
+											reject(error);
+										} else {
+											resolve(Buffer.concat(buffers));
+										}
+									});
+								});
+						})
+						.catch(reject);
+				}
+			});
+		});
+	} else {
+		return new Promise((resolve, reject) => {
+			// Copy the project to a temporary location.
+			// This allows us a safe way to "swap" binary modules.
+			fs.copySync(globRoot, tempBundleDir);
 
-              fstream.pipe(packer)
-                .on('data', chunk => {
-                  buffers.push(chunk);
-                })
-                .on('end', () => {
-                  fs.remove(tempBundleDir, error => {
-                    if (error) {
-                      reject(error);
-                    } else {
-                      resolve(Buffer.concat(buffers));
-                    }
-                  });
-                });
-            })
-            .catch(reject);
-        }
-      });
-    });
-  } else {
+			return exportables
+				.injectBinaryModules(globRoot, tempBundleDir, options)
+				.then(() => {
+					var fstream = new Ignore({
+						basename: '',
+						ignoreFiles: ['.tesselignore'],
+						path: tempBundleDir,
+					});
 
-    return new Promise((resolve, reject) => {
-      // Copy the project to a temporary location.
-      // This allows us a safe way to "swap" binary modules.
-      fs.copySync(globRoot, tempBundleDir);
+					// Don't send the actual rules files
+					fstream.addIgnoreRules(['**/.tesselignore', '**/.tesselinclude']);
 
-      return exportables.injectBinaryModules(globRoot, tempBundleDir, options)
-        .then(() => {
-          var fstream = new Ignore({
-            basename: '',
-            ignoreFiles: ['.tesselignore'],
-            path: tempBundleDir,
-          });
+					if (includeNegateRules.length) {
+						fstream.addIgnoreRules(includeNegateRules);
+					}
 
-          // Don't send the actual rules files
-          fstream.addIgnoreRules([
-            '**/.tesselignore',
-            '**/.tesselinclude',
-          ]);
+					if (!options.single && includeFiles.length) {
+						// Instead of making a complete subclass of Ignore (as is done in fstream-npm,
+						// https://github.com/npm/fstream-npm/blob/master/fstream-npm.js#L91-L183),
+						// we'll over-ride the just the `applyIgnores` method for cases where there
+						// are .tesselinclude entries that have explicit inclusion rules.
+						fstream.applyIgnores = function (entry, partial, entryObj) {
+							if (includeFiles.indexOf(entry) !== -1) {
+								return true;
+							}
 
-          if (includeNegateRules.length) {
-            fstream.addIgnoreRules(includeNegateRules);
-          }
+							return Ignore.prototype.applyIgnores.call(
+								fstream,
+								entry,
+								partial,
+								entryObj,
+							);
+						};
+					}
 
-          if (!options.single && includeFiles.length) {
-            // Instead of making a complete subclass of Ignore (as is done in fstream-npm,
-            // https://github.com/npm/fstream-npm/blob/master/fstream-npm.js#L91-L183),
-            // we'll over-ride the just the `applyIgnores` method for cases where there
-            // are .tesselinclude entries that have explicit inclusion rules.
-            fstream.applyIgnores = function(entry, partial, entryObj) {
-              if (includeFiles.indexOf(entry) !== -1) {
-                return true;
-              }
+					if (options.single) {
+						fstream.addIgnoreRules(['*', `!${options.resolvedEntryPoint}`]);
+					}
 
-              return Ignore.prototype.applyIgnores.call(fstream, entry, partial, entryObj);
-            };
-          }
+					// This ensures that the remote root directory
+					// is the same level as the directory containing
+					// our program entry-point files.
+					fstream.on('entry', (entry) => {
+						entry.root = {
+							path: entry.path,
+						};
+					});
 
-          if (options.single) {
-            fstream.addIgnoreRules(['*', `!${options.resolvedEntryPoint}`]);
-          }
+					fstream.on('error', (error) => reject(error));
 
-          // This ensures that the remote root directory
-          // is the same level as the directory containing
-          // our program entry-point files.
-          fstream.on('entry', entry => {
-            entry.root = {
-              path: entry.path
-            };
-          });
-
-          fstream.on('error', error => reject(error));
-
-          // Send the ignore-filtered file stream into the tar packer
-          fstream.pipe(packer)
-            .on('data', chunk => {
-              buffers.push(chunk);
-            })
-            .on('end', () => {
-              resolve(Buffer.concat(buffers));
-            });
-        })
-        .catch(reject);
-    });
-  }
+					// Send the ignore-filtered file stream into the tar packer
+					fstream
+						.pipe(packer)
+						.on('data', (chunk) => {
+							buffers.push(chunk);
+						})
+						.on('end', () => {
+							resolve(Buffer.concat(buffers));
+						});
+				})
+				.catch(reject);
+		});
+	}
 };
-
 
 /**
  * Build project dependency graph
@@ -748,11 +801,11 @@ exportables.tarBundle = function(options) {
  *
  * @param {Object} options  Specify how dependency graphing is configured and behaves.
  */
-exportables.project = function(options) {
-  // To make these operations testable, we must wrap them
-  // in our own exported `exportables`.
+exportables.project = function (options) {
+	// To make these operations testable, we must wrap them
+	// in our own exported `exportables`.
 
-  return new Project(options);
+	return new Project(options);
 };
 
 /**
@@ -763,11 +816,11 @@ exportables.project = function(options) {
  * @param {String} rule         Rule to compare with
  * @param {Object} matchOptions Matching options (see minimatch docs)
  */
-exportables.minimatch = function(modulePath, rule, matchOptions) {
-  // To make these operations testable, we must wrap them
-  // in our own exported `exportables`.
+exportables.minimatch = function (modulePath, rule, matchOptions) {
+	// To make these operations testable, we must wrap them
+	// in our own exported `exportables`.
 
-  return minimatch(modulePath, rule, matchOptions);
+	return minimatch(modulePath, rule, matchOptions);
 };
 
 /**
@@ -780,120 +833,117 @@ exportables.minimatch = function(modulePath, rule, matchOptions) {
  * @param  {Object} options Specify how compression is configured and behaves.
  * @return {String}         Minified/compressed JavaScript code.
  */
-exportables.compress = function(version, source, options) {
-  source = typeof source === 'string' ? source : source.toString();
+exportables.compress = function (version, source, options) {
+	source = typeof source === 'string' ? source : source.toString();
 
-  options = options || {
-    compress: {},
-    mangle: {},
-    parse: {},
-  };
+	options = options || {
+		compress: {},
+		mangle: {},
+		parse: {},
+	};
 
+	const dUOpts = Object.assign({}, defaultUOptions[version]);
 
-  const dUOpts = Object.assign({}, defaultUOptions[version]);
+	const compress = Object.assign({}, dUOpts.compress, options.compress || {});
+	const mangle = Object.assign({}, dUOpts.mangle, options.mangle || {});
+	const output = Object.assign({}, dUOpts.output, options.output || {});
+	const parse = Object.assign({}, dUOpts.parse, options.parse || {});
 
-  const compress = Object.assign({}, dUOpts.compress, options.compress || {});
-  const mangle = Object.assign({}, dUOpts.mangle, options.mangle || {});
-  const output = Object.assign({}, dUOpts.output, options.output || {});
-  const parse = Object.assign({}, dUOpts.parse, options.parse || {});
+	const uOptions = {
+		toplevel: true,
+		warnings: false,
+		compress,
+		mangle,
+		output,
+		parse,
+	};
 
-  const uOptions = {
-    toplevel: true,
-    warnings: false,
-    compress,
-    mangle,
-    output,
-    parse,
-  };
+	const result = uglify[version].minify(source, uOptions);
 
-  const result = uglify[version].minify(source, uOptions);
+	// If there was an error, let the source
+	// proceed uncompressed.
+	if (result.error) {
+		return source;
+	}
 
-  // If there was an error, let the source
-  // proceed uncompressed.
-  if (result.error) {
-    return source;
-  }
-
-  return result.code;
+	return result.code;
 };
 
 const defaultUOptions = {
-  es: {
-    compress: {
-      // ------
-      booleans: true,
-      cascade: true,
-      conditionals: true,
-      comparisons: true,
-      ecma: 6,
-      evaluate: true,
-      hoist_funs: true,
-      hoist_vars: true,
-      if_return: true,
-      join_vars: true,
-      loops: true,
-      passes: 3,
-      properties: true,
-      sequences: true,
-      unsafe: true,
-      // ------ potentially dangerous
-      dead_code: true,
-      unsafe_math: true,
-      keep_infinity: true,
-      // ------ explicitly false
-      arrows: false,
-      keep_fargs: false,
-      keep_fnames: false,
-      warnings: false,
-      drop_console: false,
-    },
+	es: {
+		compress: {
+			// ------
+			booleans: true,
+			cascade: true,
+			conditionals: true,
+			comparisons: true,
+			ecma: 6,
+			evaluate: true,
+			hoist_funs: true,
+			hoist_vars: true,
+			if_return: true,
+			join_vars: true,
+			loops: true,
+			passes: 3,
+			properties: true,
+			sequences: true,
+			unsafe: true,
+			// ------ potentially dangerous
+			dead_code: true,
+			unsafe_math: true,
+			keep_infinity: true,
+			// ------ explicitly false
+			arrows: false,
+			keep_fargs: false,
+			keep_fnames: false,
+			warnings: false,
+			drop_console: false,
+		},
 
-    mangle: {
-      toplevel: true,
-    },
+		mangle: {
+			toplevel: true,
+		},
 
-    output: {
-      ecma: 6,
-    },
+		output: {
+			ecma: 6,
+		},
 
-    parse: {
-      bare_returns: true,
-      shebang: true,
-    },
-  },
-  js: {
-    compress: {
-      // ------
-      booleans: true,
-      cascade: true,
-      conditionals: true,
-      comparisons: true,
-      hoist_funs: true,
-      if_return: true,
-      join_vars: true,
-      loops: true,
-      passes: 2,
-      properties: true,
-      sequences: true,
-      // ------ explicitly false
-      keep_fargs: false,
-      keep_fnames: false,
-      warnings: false,
-      drop_console: false,
-    },
+		parse: {
+			bare_returns: true,
+			shebang: true,
+		},
+	},
+	js: {
+		compress: {
+			// ------
+			booleans: true,
+			cascade: true,
+			conditionals: true,
+			comparisons: true,
+			hoist_funs: true,
+			if_return: true,
+			join_vars: true,
+			loops: true,
+			passes: 2,
+			properties: true,
+			sequences: true,
+			// ------ explicitly false
+			keep_fargs: false,
+			keep_fnames: false,
+			warnings: false,
+			drop_console: false,
+		},
 
-    mangle: {
-      toplevel: true,
-    },
+		mangle: {
+			toplevel: true,
+		},
 
-    output: {
+		output: {},
 
-    },
-
-    parse: {
-      bare_returns: true,
-      shebang: true,
-    },
-  }
+		parse: {
+			bare_returns: true,
+			shebang: true,
+		},
+	},
 };
 module.exports = exportables;

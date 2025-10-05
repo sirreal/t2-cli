@@ -10,142 +10,144 @@ var tar = require('tar');
 
 // Internal
 var lists = require('./lists/python');
-var glob = require('./glob');
-
+var glob = require('./glob.ts');
 
 var exportables = {
-  meta: {
-    name: 'python',
-    extname: 'py',
-    binary: 'python',
-    isFile: true,
-    entry: '__init__.py',
-    configuration: '__init__.py',
-    /* istanbul ignore next */
-    checkConfiguration(pushdir, basename, program) {
-      // var packageJson = fs.readJsonSync(path.join(pushdir, 'package.json'));
+	meta: {
+		name: 'python',
+		extname: 'py',
+		binary: 'python',
+		isFile: true,
+		entry: '__init__.py',
+		configuration: '__init__.py',
+		/* istanbul ignore next */
+		checkConfiguration(pushdir, basename, program) {
+			// var packageJson = fs.readJsonSync(path.join(pushdir, 'package.json'));
 
-      // if (packageJson.main) {
-      //   basename = path.basename(program);
-      //   program = path.normalize(program.replace(basename, packageJson.main));
-      // }
-      /* istanbul ignore next */
-      return {
-        basename,
-        program
-      };
-    },
-    /* istanbul ignore next */
-    shell(options) {
-      /* istanbul ignore next */
-      return tags.stripIndent `
+			// if (packageJson.main) {
+			//   basename = path.basename(program);
+			//   program = path.normalize(program.replace(basename, packageJson.main));
+			// }
+			/* istanbul ignore next */
+			return {
+				basename,
+				program,
+			};
+		},
+		/* istanbul ignore next */
+		shell(options) {
+			/* istanbul ignore next */
+			return tags.stripIndent`
         #!/bin/sh
         exec python ${options.binopts.join(' ')} /app/remote-script/${options.resolvedEntryPoint} ${options.subargs.join(' ')}
       `;
-    },
-  },
-  lists: lists,
+		},
+	},
+	lists: lists,
 };
 
 /* istanbul ignore next */
-exportables.preBundle = function() {
-  /* istanbul ignore next */
-  return Promise.resolve();
+exportables.preBundle = function () {
+	/* istanbul ignore next */
+	return Promise.resolve();
 };
 
 /* istanbul ignore next */
-exportables.tarBundle = function(opts) {
-  var cwd = process.cwd();
-  var target = opts.target || cwd;
-  var relative = path.relative(cwd, target);
-  var globRoot = relative || target;
-  var packer = tar.Pack({
-    noProprietary: true
-  });
-  var buffers = [];
-  var tempBundleDir = fsTemp.mkdirSync();
+exportables.tarBundle = function (opts) {
+	var cwd = process.cwd();
+	var target = opts.target || cwd;
+	var relative = path.relative(cwd, target);
+	var globRoot = relative || target;
+	var packer = tar.Pack({
+		noProprietary: true,
+	});
+	var buffers = [];
+	var tempBundleDir = fsTemp.mkdirSync();
 
-  var includeRules = glob.rules(target, '.tesselinclude').concat(lists.includes);
-  var includeFiles = glob.files(globRoot, includeRules);
-  var includeNegateRules = includeRules.reduce((rules, pattern) => {
-    if (pattern.startsWith('!')) {
-      rules.push(pattern.slice(1));
-    }
-    return rules;
-  }, []);
+	var includeRules = glob
+		.rules(target, '.tesselinclude')
+		.concat(lists.includes);
+	var includeFiles = glob.files(globRoot, includeRules);
+	var includeNegateRules = includeRules.reduce((rules, pattern) => {
+		if (pattern.startsWith('!')) {
+			rules.push(pattern.slice(1));
+		}
+		return rules;
+	}, []);
 
-  if (fs.existsSync(path.join(target, 'setup.py'))) {
-    // TODO:
-    // Create a cross-compilation server for compiling?
-  }
+	if (fs.existsSync(path.join(target, 'setup.py'))) {
+		// TODO:
+		// Create a cross-compilation server for compiling?
+	}
 
-  // For now, stay out of that path.
-  opts.slim = false;
+	// For now, stay out of that path.
+	opts.slim = false;
 
-  if (opts.slim) {
-    throw new Error('--slim builds are not yet available for Python');
-  } else {
-    return new Promise((resolve, reject) => {
+	if (opts.slim) {
+		throw new Error('--slim builds are not yet available for Python');
+	} else {
+		return new Promise((resolve, reject) => {
+			fs.copySync(globRoot, tempBundleDir);
 
-      fs.copySync(globRoot, tempBundleDir);
+			var fstream = new Ignore({
+				basename: '',
+				ignoreFiles: ['.tesselignore'],
+				path: tempBundleDir,
+			});
 
-      var fstream = new Ignore({
-        basename: '',
-        ignoreFiles: ['.tesselignore'],
-        path: tempBundleDir,
-      });
+			// Don't send the actual rules files
+			fstream.addIgnoreRules(['**/.tesselignore', '**/.tesselinclude']);
 
-      // Don't send the actual rules files
-      fstream.addIgnoreRules([
-        '**/.tesselignore',
-        '**/.tesselinclude',
-      ]);
+			if (includeNegateRules.length) {
+				fstream.addIgnoreRules(includeNegateRules);
+			}
 
-      if (includeNegateRules.length) {
-        fstream.addIgnoreRules(includeNegateRules);
-      }
+			if (!opts.single && includeFiles.length) {
+				// Instead of making a complete subclass of Ignore (as is done in fstream-npm,
+				// https://github.com/npm/fstream-npm/blob/master/fstream-npm.js#L91-L183),
+				// we'll over-ride the just the `applyIgnores` method for cases where there
+				// are .tesselinclude entries that have explicit inclusion rules.
+				fstream.applyIgnores = function (entry, partial, entryObj) {
+					if (includeFiles.indexOf(entry) !== -1) {
+						return true;
+					}
 
-      if (!opts.single && includeFiles.length) {
-        // Instead of making a complete subclass of Ignore (as is done in fstream-npm,
-        // https://github.com/npm/fstream-npm/blob/master/fstream-npm.js#L91-L183),
-        // we'll over-ride the just the `applyIgnores` method for cases where there
-        // are .tesselinclude entries that have explicit inclusion rules.
-        fstream.applyIgnores = function(entry, partial, entryObj) {
-          if (includeFiles.indexOf(entry) !== -1) {
-            return true;
-          }
+					return Ignore.prototype.applyIgnores.call(
+						fstream,
+						entry,
+						partial,
+						entryObj,
+					);
+				};
+			}
 
-          return Ignore.prototype.applyIgnores.call(fstream, entry, partial, entryObj);
-        };
-      }
+			if (opts.single) {
+				fstream.addIgnoreRules(['*', '!' + opts.resolvedEntryPoint]);
+			}
 
-      if (opts.single) {
-        fstream.addIgnoreRules(['*', '!' + opts.resolvedEntryPoint]);
-      }
+			// This ensures that the remote root directory
+			// is the same level as the directory containing
+			// our program entry-point files.
+			fstream.on('entry', (entry) => {
+				entry.root = {
+					path: entry.path,
+				};
+			});
 
-      // This ensures that the remote root directory
-      // is the same level as the directory containing
-      // our program entry-point files.
-      fstream.on('entry', (entry) => {
-        entry.root = {
-          path: entry.path
-        };
-      });
-
-      // Send the ignore-filtered file stream into the tar packer
-      fstream.pipe(packer)
-        .on('data', (chunk) => {
-          buffers.push(chunk);
-        })
-        .on('error', (data) => {
-          reject(data);
-        })
-        .on('end', () => {
-          resolve(Buffer.concat(buffers));
-        });
-    });
-  }
+			// Send the ignore-filtered file stream into the tar packer
+			fstream
+				.pipe(packer)
+				.on('data', (chunk) => {
+					buffers.push(chunk);
+				})
+				.on('error', (data) => {
+					reject(data);
+				})
+				.on('end', () => {
+					resolve(Buffer.concat(buffers));
+				});
+		});
+	}
 };
-
 
 module.exports = exportables;

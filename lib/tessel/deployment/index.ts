@@ -6,9 +6,9 @@ var fs = require('fs-extra');
 
 
 var languages = {
-  js: require('./javascript'),
-  py: require('./python'),
-  rs: require('./rust'),
+  js: require('./javascript.ts'),
+  py: require('./python.ts'),
+  rs: require('./rust.ts'),
 };
 
 var exportables = {

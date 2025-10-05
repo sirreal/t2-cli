@@ -1,50 +1,51 @@
 {
-  "$schema": "https://www.schemastore.org/tsconfig.json",
-  // Visit https://aka.ms/tsconfig to read more about this file
-  "compilerOptions": {
-    "allowJs": false,
+	"$schema": "https://www.schemastore.org/tsconfig.json",
+	// Visit https://aka.ms/tsconfig to read more about this file
+	"compilerOptions": {
+		"allowJs": false,
 
-    // File Layout
-    "rootDirs": ["bin","lib"],
-    // "outDir": "./dist",
+		// File Layout
+		"rootDirs": ["bin", "lib"],
+		"allowImportingTsExtensions": true,
+		// "outDir": "./dist",
 
-    // Environment Settings
-    // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
-    "target": "esnext",
-    "lib": ["esnext"],
-    "types": ["node"],
+		// Environment Settings
+		// See also https://aka.ms/tsconfig/module
+		"module": "nodenext",
+		"target": "esnext",
+		"lib": ["esnext"],
+		"types": ["node"],
 
-    // Other Outputs
-    "emitDeclarationOnly": true,
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
+		// Other Outputs
+		"emitDeclarationOnly": true,
+		"sourceMap": true,
+		"declaration": true,
+		"declarationMap": true,
 
-    "erasableSyntaxOnly": true,
+		"erasableSyntaxOnly": true,
 
-    // Stricter Typechecking Options
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
+		// Stricter Typechecking Options
+		"noUncheckedIndexedAccess": true,
+		"exactOptionalPropertyTypes": true,
 
-    // Style Options
-    // "noImplicitReturns": true,
-    // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
-    // "noPropertyAccessFromIndexSignature": true,
+		// Style Options
+		// "noImplicitReturns": true,
+		// "noImplicitOverride": true,
+		// "noUnusedLocals": true,
+		// "noUnusedParameters": true,
+		// "noFallthroughCasesInSwitch": true,
+		// "noPropertyAccessFromIndexSignature": true,
 
-    // Recommended Options
-    "strict": true,
-    "noImplicitAny": false,
-    "noImplicitThis": false,
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
-    "skipLibCheck": true,
-  },
-  "files": ["bin/tessel-2.ts"],
-  "include": ["lib"]
+		// Recommended Options
+		"strict": true,
+		"noImplicitAny": false,
+		"noImplicitThis": false,
+		"verbatimModuleSyntax": true,
+		"isolatedModules": true,
+		"noUncheckedSideEffectImports": true,
+		"moduleDetection": "force",
+		"skipLibCheck": true
+	},
+	"files": ["bin/tessel-2.ts"],
+	"include": ["lib"]
 }

@@ -140,13 +140,13 @@ Tessel.REMOTE_RUN_PATH = path.posix.join(Tessel.REMOTE_TMP_PATH, Tessel.REMOTE_S
 
 module.exports = Tessel;
 
-require('./access-point');
-require('./deploy');
-require('./erase');
-require('./name');
-require('./provision');
-require('./update');
-require('./version');
-require('./wifi');
-require('./restore');
-require('./reboot');
+require('./access-point.ts');
+require('./deploy.ts');
+require('./erase.ts');
+require('./name.ts');
+require('./provision.ts');
+require('./update.ts');
+require('./version.ts');
+require('./wifi.ts');
+require('./restore.ts');
+require('./reboot.ts');

@@ -8,9 +8,9 @@ var parser = require('nomnom').script('t2');
 const isRoot = require('is-root');
 
 // Internal
-var controller = require('../lib/controller');
-var log = require('../lib/log');
-var Preferences = require('../lib/preferences');
+var controller = require('../lib/controller.ts');
+var log = require('../lib/log.ts');
+var Preferences = require('../lib/preferences.ts');
 
 const CLI_ENTRYPOINT = 'cli.entrypoint';
 
@@ -22,218 +22,228 @@ const hidden = true;
 const required = true;
 
 function makeCommand(commandName) {
-  return parser.command(commandName)
-    .option('timeout', {
-      abbr: 't',
-      metavar: 'TIMEOUT',
-      help: 'Set timeout in seconds for scanning for networked tessels',
-      default: 5
-    })
-    .option('key', {
-      required: false,
-      metavar: 'PRIVATEKEY',
-      abbr: 'i',
-      help: 'SSH key for authorization with your Tessel'
-    })
-    .option('name', {
-      metavar: 'NAME',
-      help: 'The name of the tessel on which the command will be executed'
-    })
-    .option('lan', {
-      flag,
-      help: 'Use only a LAN connection'
-    })
-    .option('usb', {
-      flag,
-      help: 'Use only a USB connection'
-    })
-    .option('lanPrefer', {
-      flag,
-      default: false,
-      help: 'Prefer a LAN connection when available, otherwise use USB.'
-    })
-    .option('output', {
-      default: true,
-      choices: [true, false],
-      abbr: 'o',
-      help: 'Enable or disable writing command output to stdout/stderr. Useful for CLI API consumers.'
-    })
-    .option('loglevel', {
-      default: 'basic',
-      choices: ['trace', 'debug', 'basic', 'info', 'http', 'warn', 'error'],
-      help: 'Set the loglevel.',
-    });
+	return parser
+		.command(commandName)
+		.option('timeout', {
+			abbr: 't',
+			metavar: 'TIMEOUT',
+			help: 'Set timeout in seconds for scanning for networked tessels',
+			default: 5,
+		})
+		.option('key', {
+			required: false,
+			metavar: 'PRIVATEKEY',
+			abbr: 'i',
+			help: 'SSH key for authorization with your Tessel',
+		})
+		.option('name', {
+			metavar: 'NAME',
+			help: 'The name of the tessel on which the command will be executed',
+		})
+		.option('lan', {
+			flag,
+			help: 'Use only a LAN connection',
+		})
+		.option('usb', {
+			flag,
+			help: 'Use only a USB connection',
+		})
+		.option('lanPrefer', {
+			flag,
+			default: false,
+			help: 'Prefer a LAN connection when available, otherwise use USB.',
+		})
+		.option('output', {
+			default: true,
+			choices: [true, false],
+			abbr: 'o',
+			help: 'Enable or disable writing command output to stdout/stderr. Useful for CLI API consumers.',
+		})
+		.option('loglevel', {
+			default: 'basic',
+			choices: ['trace', 'debug', 'basic', 'info', 'http', 'warn', 'error'],
+			help: 'Set the loglevel.',
+		});
 }
 
 function callControllerWith(methodName, options) {
-  log.spinner.start();
-  return controller[methodName](options)
-    .then(module.exports.closeSuccessfulCommand, module.exports.closeFailedCommand);
+	log.spinner.start();
+	return controller[methodName](options).then(
+		module.exports.closeSuccessfulCommand,
+		module.exports.closeFailedCommand,
+	);
 }
 
-parser.command('install')
-  .callback(options => {
-    log.level(options.loglevel);
+parser
+	.command('install')
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    callControllerWith('installer', options);
-  })
-  .option('operation', {
-    position: 1,
-    required,
-    choices: ['drivers', 'homedir']
-  })
-  .help(`
+		callControllerWith('installer', options);
+	})
+	.option('operation', {
+		position: 1,
+		required,
+		choices: ['drivers', 'homedir'],
+	})
+	.help(`
     Install additional system dependencies
 
     drivers    Installs USB drivers on Linux hosts
     homedir    Creates a '.tessel' sub directory in host HOME directory
   `);
 
-parser.command('crash-reporter')
-  .callback(options => {
-    log.level(options.loglevel);
+parser
+	.command('crash-reporter')
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    callControllerWith('crashReporter', options);
-  })
-  .option('off', {
-    flag,
-    help: 'Disable the Crash Reporter.'
-  })
-  .option('on', {
-    flag,
-    help: 'Enable the Crash Reporter.'
-  })
-  .option('test', {
-    flag,
-    help: 'Test the Crash Reporter.'
-  })
-  .help('Configure the Crash Reporter.');
+		callControllerWith('crashReporter', options);
+	})
+	.option('off', {
+		flag,
+		help: 'Disable the Crash Reporter.',
+	})
+	.option('on', {
+		flag,
+		help: 'Enable the Crash Reporter.',
+	})
+	.option('test', {
+		flag,
+		help: 'Test the Crash Reporter.',
+	})
+	.help('Configure the Crash Reporter.');
 
-parser.command('provision')
-  .callback(options => {
-    log.level(options.loglevel);
+parser
+	.command('provision')
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    callControllerWith('provision', options);
-  })
-  .option('force', {
-    abbr: 'f',
-    flag,
-    help: 'Delete existing .tessel authorization and reprovision.'
-  })
-  .help('Authorize your computer to control the USB-connected Tessel');
+		callControllerWith('provision', options);
+	})
+	.option('force', {
+		abbr: 'f',
+		flag,
+		help: 'Delete existing .tessel authorization and reprovision.',
+	})
+	.help('Authorize your computer to control the USB-connected Tessel');
 
 makeCommand('restore')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    callControllerWith('restore', options);
-  })
-  .option('force', {
-    abbr: 'f',
-    flag,
-    help: 'Skip the Device ID check and restore. Including this flag is not recommended, but may be necessary if Tessel memory device contents are corrupt.'
-  })
-  .help('Restore your Tessel by installing the factory version of OpenWrt.');
+		callControllerWith('restore', options);
+	})
+	.option('force', {
+		abbr: 'f',
+		flag,
+		help: 'Skip the Device ID check and restore. Including this flag is not recommended, but may be necessary if Tessel memory device contents are corrupt.',
+	})
+	.help('Restore your Tessel by installing the factory version of OpenWrt.');
 
 makeCommand('restart')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    // 1. Check that the type is a valid type
-    if (options.type !== 'ram' && options.type !== 'flash') {
-      return module.exports.closeFailedCommand('--type Invalid ');
-    }
+		// 1. Check that the type is a valid type
+		if (options.type !== 'ram' && options.type !== 'flash') {
+			return module.exports.closeFailedCommand('--type Invalid ');
+		}
 
-    // 2. If an entry point file wasn't specified, get the last
-    //    known entry point file name and use that.
-    if (options.entryPoint === undefined) {
-      Preferences.read(CLI_ENTRYPOINT, undefined).then(entryPoint => {
-        if (entryPoint) {
-          options.entryPoint = entryPoint;
-        } else {
-          // 3. However, if that doesn't exist either,
-          //    there is nothing further to do.
-          return module.exports.closeFailedCommand('Cannot determine entry point file name');
-        }
-        callControllerWith('restart', options);
-      });
-    } else {
-      callControllerWith('restart', options);
-    }
-  })
-  .option('entryPoint', {
-    position: 1,
-    help: 'The entry point file to deploy to Tessel'
-  })
-  .option('type', {
-    default: 'ram',
-    help: 'Specify where in memory the script is located: `--type=flash` (push) or `--type=ram` (run)'
-  })
-  .help('Restart a previously deployed script in RAM or Flash memory (does not rebundle)');
+		// 2. If an entry point file wasn't specified, get the last
+		//    known entry point file name and use that.
+		if (options.entryPoint === undefined) {
+			Preferences.read(CLI_ENTRYPOINT, undefined).then((entryPoint) => {
+				if (entryPoint) {
+					options.entryPoint = entryPoint;
+				} else {
+					// 3. However, if that doesn't exist either,
+					//    there is nothing further to do.
+					return module.exports.closeFailedCommand(
+						'Cannot determine entry point file name',
+					);
+				}
+				callControllerWith('restart', options);
+			});
+		} else {
+			callControllerWith('restart', options);
+		}
+	})
+	.option('entryPoint', {
+		position: 1,
+		help: 'The entry point file to deploy to Tessel',
+	})
+	.option('type', {
+		default: 'ram',
+		help: 'Specify where in memory the script is located: `--type=flash` (push) or `--type=ram` (run)',
+	})
+	.help(
+		'Restart a previously deployed script in RAM or Flash memory (does not rebundle)',
+	);
 
 makeCommand('reboot')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    callControllerWith('reboot', options);
-  })
-  .help('Reboot your Tessel');
+		callControllerWith('reboot', options);
+	})
+	.help('Reboot your Tessel');
 
 makeCommand('run')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    options.push = false;
-    // Overridden in tarBundle if options.full is `true`
-    options.slim = true;
-    // binopts will come from an actual option,
-    // whereas subargs are custom parsed
-    options.subargs = parser.subargs || [];
+		options.push = false;
+		// Overridden in tarBundle if options.full is `true`
+		options.slim = true;
+		// binopts will come from an actual option,
+		// whereas subargs are custom parsed
+		options.subargs = parser.subargs || [];
 
-    callControllerWith('deploy', options);
-  })
-  .option('entryPoint', {
-    position: 1,
-    required,
-    help: 'The program entry point file to deploy to Tessel'
-  })
-  .option('single', {
-    flag,
-    abbr: 's',
-    help: 'Deploy only the specified entry point file. Previously deployed files are preserved. Program is started from specified file.'
-  })
-  .option('verbose', {
-    flag,
-    abbr: 'v',
-    help: 'Choose to view more debugging information'
-  })
-  .option('slim', {
-    flag,
-    default: true,
-    help: 'Deploy a project containing only the required files, excluding any files matched by non-negated rules in .tesselignore and including any files matched by rules in .tesselinclude. Program is started from specified file.',
-  })
-  .option('full', {
-    flag,
-    default: false,
-    help: 'Deploy a project containing all files within, including those not used by the program, excluding any files matched by non-negated rules in .tesselignore and including any files matched by rules in .tesselinclude. Program is started from specified file.'
-  })
-  .option('compress', {
-    flag,
-    default: true,
-    help: 'Compression steps during deployment. To skip compression, use --compress=false.'
-  })
-  .option('rustcc', {
-    flag,
-    help: 'Specify the location and port of the Rust cross-compilation server.'
-  })
-  .option('binopts', {
-    default: [],
-    transform(binopts) {
-      return binopts.split(/,|\s+/).filter(Boolean);
-    },
-    help: 'Arguments sent to the binary (e.g. Node.js, Python)'
-  })
-  .help(`
+		callControllerWith('deploy', options);
+	})
+	.option('entryPoint', {
+		position: 1,
+		required,
+		help: 'The program entry point file to deploy to Tessel',
+	})
+	.option('single', {
+		flag,
+		abbr: 's',
+		help: 'Deploy only the specified entry point file. Previously deployed files are preserved. Program is started from specified file.',
+	})
+	.option('verbose', {
+		flag,
+		abbr: 'v',
+		help: 'Choose to view more debugging information',
+	})
+	.option('slim', {
+		flag,
+		default: true,
+		help: 'Deploy a project containing only the required files, excluding any files matched by non-negated rules in .tesselignore and including any files matched by rules in .tesselinclude. Program is started from specified file.',
+	})
+	.option('full', {
+		flag,
+		default: false,
+		help: 'Deploy a project containing all files within, including those not used by the program, excluding any files matched by non-negated rules in .tesselignore and including any files matched by rules in .tesselinclude. Program is started from specified file.',
+	})
+	.option('compress', {
+		flag,
+		default: true,
+		help: 'Compression steps during deployment. To skip compression, use --compress=false.',
+	})
+	.option('rustcc', {
+		flag,
+		help: 'Specify the location and port of the Rust cross-compilation server.',
+	})
+	.option('binopts', {
+		default: [],
+		transform(binopts) {
+			return binopts.split(/,|\s+/).filter(Boolean);
+		},
+		help: 'Arguments sent to the binary (e.g. Node.js, Python)',
+	})
+	.help(`
     Deploy an application to Tessel and run it.
 
     Assets that are not directly deployed as a dependency via require analysis,
@@ -245,61 +255,61 @@ makeCommand('run')
   `);
 
 makeCommand('push')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    options.lanPrefer = true;
-    options.push = true;
-    // Overridden in tarBundle if options.full is `true`
-    options.slim = true;
-    // binopts will come from an actual option,
-    // whereas subargs are custom parsed
-    options.subargs = parser.subargs || [];
+		options.lanPrefer = true;
+		options.push = true;
+		// Overridden in tarBundle if options.full is `true`
+		options.slim = true;
+		// binopts will come from an actual option,
+		// whereas subargs are custom parsed
+		options.subargs = parser.subargs || [];
 
-    callControllerWith('deploy', options);
-  })
-  .option('entryPoint', {
-    position: 1,
-    required,
-    help: 'The program entry point file to deploy to Tessel'
-  })
-  .option('single', {
-    flag,
-    abbr: 's',
-    help: 'Deploy only the specified entry point file. Previously deployed files are preserved. Program is started from specified file.'
-  })
-  .option('verbose', {
-    flag,
-    abbr: 'v',
-    help: 'Choose to view more debugging information'
-  })
-  .option('slim', {
-    flag,
-    default: true,
-    help: 'Deploy a project containing only the required files, excluding any files matched by non-negated rules in .tesselignore and including any files matched by rules in .tesselinclude. Program is started from specified file.',
-  })
-  .option('full', {
-    flag,
-    default: false,
-    help: 'Deploy a project containing all files within, including those not used by the program, excluding any files matched by non-negated rules in .tesselignore and including any files matched by rules in .tesselinclude. Program is started from specified file.'
-  })
-  .option('compress', {
-    flag,
-    default: true,
-    help: 'Compression steps during deployment. To skip compression, use --compress=false.'
-  })
-  .option('rustcc', {
-    flag,
-    help: 'Specify the location and port of the Rust cross-compilation server.'
-  })
-  .option('binopts', {
-    default: [],
-    transform(binopts) {
-      return binopts.split(/,|\s+/).filter(Boolean);
-    },
-    help: 'Arguments sent to the binary (e.g. Node.js, Python)'
-  })
-  .help(`
+		callControllerWith('deploy', options);
+	})
+	.option('entryPoint', {
+		position: 1,
+		required,
+		help: 'The program entry point file to deploy to Tessel',
+	})
+	.option('single', {
+		flag,
+		abbr: 's',
+		help: 'Deploy only the specified entry point file. Previously deployed files are preserved. Program is started from specified file.',
+	})
+	.option('verbose', {
+		flag,
+		abbr: 'v',
+		help: 'Choose to view more debugging information',
+	})
+	.option('slim', {
+		flag,
+		default: true,
+		help: 'Deploy a project containing only the required files, excluding any files matched by non-negated rules in .tesselignore and including any files matched by rules in .tesselinclude. Program is started from specified file.',
+	})
+	.option('full', {
+		flag,
+		default: false,
+		help: 'Deploy a project containing all files within, including those not used by the program, excluding any files matched by non-negated rules in .tesselignore and including any files matched by rules in .tesselinclude. Program is started from specified file.',
+	})
+	.option('compress', {
+		flag,
+		default: true,
+		help: 'Compression steps during deployment. To skip compression, use --compress=false.',
+	})
+	.option('rustcc', {
+		flag,
+		help: 'Specify the location and port of the Rust cross-compilation server.',
+	})
+	.option('binopts', {
+		default: [],
+		transform(binopts) {
+			return binopts.split(/,|\s+/).filter(Boolean);
+		},
+		help: 'Arguments sent to the binary (e.g. Node.js, Python)',
+	})
+	.help(`
     Pushes the file/dir to Flash memory to be run anytime the Tessel is powered,
     runs the file immediately once the file is copied over.
 
@@ -312,333 +322,336 @@ makeCommand('push')
   `);
 
 makeCommand('erase')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    callControllerWith('eraseScript', options);
-  })
-  .option('verbose', {
-    flag,
-    abbr: 'v',
-    help: 'Choose to view more debugging information'
-  })
-  .help('Erases files pushed to Flash using the tessel push command');
+		callControllerWith('eraseScript', options);
+	})
+	.option('verbose', {
+		flag,
+		abbr: 'v',
+		help: 'Choose to view more debugging information',
+	})
+	.help('Erases files pushed to Flash using the tessel push command');
 
 makeCommand('list')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    callControllerWith('listTessels', options);
-  })
-  .help('Lists all connected Tessels and their authorization status.');
+		callControllerWith('listTessels', options);
+	})
+	.help('Lists all connected Tessels and their authorization status.');
 
-parser.command('init')
-  .callback(options => {
-    log.level(options.loglevel);
+parser
+	.command('init')
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    callControllerWith('createNewProject', options);
-  })
-  .option('interactive', {
-    flag,
-    abbr: 'i',
-    help: 'Run in interactive mode'
-  })
-  .option('lang', {
-    metavar: 'LANG',
-    abbr: 'l',
-    default: 'js',
-    help: 'The language to use <javascript|rust|js|rs>. JavaScript by default'
-  })
-  .help('Initialize repository for your Tessel project');
+		callControllerWith('createNewProject', options);
+	})
+	.option('interactive', {
+		flag,
+		abbr: 'i',
+		help: 'Run in interactive mode',
+	})
+	.option('lang', {
+		metavar: 'LANG',
+		abbr: 'l',
+		default: 'js',
+		help: 'The language to use <javascript|rust|js|rs>. JavaScript by default',
+	})
+	.help('Initialize repository for your Tessel project');
 
 makeCommand('wifi')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    // TODO: Refactor switch case into controller.wifi
-    if (options.list) {
-      callControllerWith('printAvailableNetworks', options);
-    } else if (options.off || options.on) {
-      /* istanbul ignore else */
-      if (options.off) {
-        options.on = false;
-      }
-      callControllerWith('setWiFiState', options);
-    } else if (options.ssid) {
-      callControllerWith('connectToNetwork', options);
-    } else {
-      callControllerWith('getWifiInfo', options);
-    }
-  })
-  .option('list', {
-    abbr: 'l',
-    flag,
-    help: 'List available Wifi networks'
-  })
-  .option('ssid', {
-    abbr: 'n',
-    metavar: 'SSID',
-    help: 'Set the SSID of the network to connect to'
-  })
-  .option('password', {
-    abbr: 'p',
-    metavar: 'PASSWORD',
-    type: 'string',
-    help: 'Set the password of the network to connect to'
-  })
-  .option('security', {
-    abbr: 's',
-    help: 'Set the encryption of the network to connect to (i.e. wep, psk, psk2, wpa, wpa2).'
-  })
-  .option('off', {
-    flag,
-    help: 'Disable the wireless network'
-  })
-  .option('on', {
-    flag,
-    help: 'Enable the wireless network'
-  })
-  .help('Configure the wireless connection');
+		// TODO: Refactor switch case into controller.wifi
+		if (options.list) {
+			callControllerWith('printAvailableNetworks', options);
+		} else if (options.off || options.on) {
+			/* istanbul ignore else */
+			if (options.off) {
+				options.on = false;
+			}
+			callControllerWith('setWiFiState', options);
+		} else if (options.ssid) {
+			callControllerWith('connectToNetwork', options);
+		} else {
+			callControllerWith('getWifiInfo', options);
+		}
+	})
+	.option('list', {
+		abbr: 'l',
+		flag,
+		help: 'List available Wifi networks',
+	})
+	.option('ssid', {
+		abbr: 'n',
+		metavar: 'SSID',
+		help: 'Set the SSID of the network to connect to',
+	})
+	.option('password', {
+		abbr: 'p',
+		metavar: 'PASSWORD',
+		type: 'string',
+		help: 'Set the password of the network to connect to',
+	})
+	.option('security', {
+		abbr: 's',
+		help: 'Set the encryption of the network to connect to (i.e. wep, psk, psk2, wpa, wpa2).',
+	})
+	.option('off', {
+		flag,
+		help: 'Disable the wireless network',
+	})
+	.option('on', {
+		flag,
+		help: 'Enable the wireless network',
+	})
+	.help('Configure the wireless connection');
 
-parser.command('key')
-  .callback(options => {
-    log.level(options.loglevel);
+parser
+	.command('key')
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    callControllerWith('setupLocal', options);
-  })
-  .option('generate', {
-    required,
-    position: 1,
-    help: 'Generate a local SSH keypair for authenticating to a Tessel'
-  })
-  .help('Manage ssh keys for connecting to a Tessel');
+		callControllerWith('setupLocal', options);
+	})
+	.option('generate', {
+		required,
+		position: 1,
+		help: 'Generate a local SSH keypair for authenticating to a Tessel',
+	})
+	.help('Manage ssh keys for connecting to a Tessel');
 
 makeCommand('rename')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    callControllerWith('rename', options);
-  })
-  .option('newName', {
-    position: 1,
-    help: 'The new name for the selected Tessel',
-  })
-  .option('reset', {
-    flag,
-    abbr: 'r',
-  })
-  .help('Change the name of a Tessel to something new');
+		callControllerWith('rename', options);
+	})
+	.option('newName', {
+		position: 1,
+		help: 'The new name for the selected Tessel',
+	})
+	.option('reset', {
+		flag,
+		abbr: 'r',
+	})
+	.help('Change the name of a Tessel to something new');
 
 makeCommand('update')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    if (options.list) {
-      callControllerWith('printAvailableUpdates', options);
-    } else {
-      callControllerWith('update', options);
-    }
-  })
-  .option('version', {
-    abbr: 'v',
-    required: false,
-    help: 'Specify a build version.'
-  })
-  .option('list', {
-    flag,
-    abbr: 'l',
-    required: false,
-    help: 'List the available builds.'
-  })
-  .option('force', {
-    flag,
-    abbr: 'f',
-    required: false,
-    help: 'Update to the latest version regardless of current version.'
-  })
-  .option('n', {
-    flag,
-    abbr: 'n',
-    required: false,
-    help: 'Do not save configuration during update.'
-  })
-  .option('openwrt-path', {
-    abbr: 'op',
-    required: false,
-    flag: false,
-    help: 'Update with the OpenWRT image at the indicated local path.'
-  })
-  .option('firmware-path', {
-    abbr: 'fp',
-    required: false,
-    help: 'Update with the firmware image at the indicated local path.'
-  })
-  .help('Update the Tessel firmware and openWRT image');
+		if (options.list) {
+			callControllerWith('printAvailableUpdates', options);
+		} else {
+			callControllerWith('update', options);
+		}
+	})
+	.option('version', {
+		abbr: 'v',
+		required: false,
+		help: 'Specify a build version.',
+	})
+	.option('list', {
+		flag,
+		abbr: 'l',
+		required: false,
+		help: 'List the available builds.',
+	})
+	.option('force', {
+		flag,
+		abbr: 'f',
+		required: false,
+		help: 'Update to the latest version regardless of current version.',
+	})
+	.option('n', {
+		flag,
+		abbr: 'n',
+		required: false,
+		help: 'Do not save configuration during update.',
+	})
+	.option('openwrt-path', {
+		abbr: 'op',
+		required: false,
+		flag: false,
+		help: 'Update with the OpenWRT image at the indicated local path.',
+	})
+	.option('firmware-path', {
+		abbr: 'fp',
+		required: false,
+		help: 'Update with the firmware image at the indicated local path.',
+	})
+	.help('Update the Tessel firmware and openWRT image');
 
 makeCommand('version')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    callControllerWith('envVersions', options);
-  })
-  .help('Display a list of present Tessel 2 environment versions (CLI, Firmware, Node)');
+		callControllerWith('envVersions', options);
+	})
+	.help(
+		'Display a list of present Tessel 2 environment versions (CLI, Firmware, Node)',
+	);
 
 makeCommand('ap')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    if (options.on || options.off) {
-      if (options.on) {
-        callControllerWith('enableAccessPoint', options);
-      } else {
-        callControllerWith('disableAccessPoint', options);
-      }
-    } else if (options.ssid) {
-      callControllerWith('createAccessPoint', options);
-    } else {
-      callControllerWith('getAccessPointInfo', options);
-    }
-  })
-  .option('ssid', {
-    abbr: 'n',
-    help: 'Name of the network.'
-  })
-  .option('password', {
-    abbr: 'p',
-    help: 'Password to access network.'
-  })
-  .option('security', {
-    abbr: 's',
-    help: 'Encryption to use on network (i.e. wep, psk, psk2, wpa, wpa2).'
-  })
-  .option('off', {
-    flag,
-    help: 'Disable the access point'
-  })
-  .option('on', {
-    flag,
-    help: 'Enable the access point'
-  })
-  .help('Configure the Tessel as an access point');
+		if (options.on || options.off) {
+			if (options.on) {
+				callControllerWith('enableAccessPoint', options);
+			} else {
+				callControllerWith('disableAccessPoint', options);
+			}
+		} else if (options.ssid) {
+			callControllerWith('createAccessPoint', options);
+		} else {
+			callControllerWith('getAccessPointInfo', options);
+		}
+	})
+	.option('ssid', {
+		abbr: 'n',
+		help: 'Name of the network.',
+	})
+	.option('password', {
+		abbr: 'p',
+		help: 'Password to access network.',
+	})
+	.option('security', {
+		abbr: 's',
+		help: 'Encryption to use on network (i.e. wep, psk, psk2, wpa, wpa2).',
+	})
+	.option('off', {
+		flag,
+		help: 'Disable the access point',
+	})
+	.option('on', {
+		flag,
+		help: 'Enable the access point',
+	})
+	.help('Configure the Tessel as an access point');
 
 makeCommand('root')
-  .callback(options => {
-    log.level(options.loglevel);
+	.callback((options) => {
+		log.level(options.loglevel);
 
-    callControllerWith('root', options);
-  })
-  .option('lan', {
-    flag,
-    hidden,
-  })
-  .option('lanPrefer', {
-    flag,
-    hidden,
-  })
-  .option('usb', {
-    flag,
-    hidden,
-  })
-  .help('Gain SSH root access to one of your authorized tessels');
+		callControllerWith('root', options);
+	})
+	.option('lan', {
+		flag,
+		hidden,
+	})
+	.option('lanPrefer', {
+		flag,
+		hidden,
+	})
+	.option('usb', {
+		flag,
+		hidden,
+	})
+	.help('Gain SSH root access to one of your authorized tessels');
 
-module.exports = function(args) {
-  var sIndexOfSA = -1;
-  var eIndexOfSA = -1;
+module.exports = function (args) {
+	var sIndexOfSA = -1;
+	var eIndexOfSA = -1;
 
-  // Check to see if there are any subargs...
-  // It would've been nice to use subarg to parse this stuff,
-  // but in reality we don't actually want to parse these yet
-  // because there is no clear path to reassembling them as
-  // the string they will need to be when the remote process is invoked.
-  for (var i = 0; i < args.length; i++) {
-    var arg = args[i];
+	// Check to see if there are any subargs...
+	// It would've been nice to use subarg to parse this stuff,
+	// but in reality we don't actually want to parse these yet
+	// because there is no clear path to reassembling them as
+	// the string they will need to be when the remote process is invoked.
+	for (var i = 0; i < args.length; i++) {
+		var arg = args[i];
 
-    if (arg.startsWith('[') && sIndexOfSA === -1) {
-      // Remove the leading '[', replace existing arg at this position
-      args[i] = arg.slice(1, arg.length);
-      sIndexOfSA = i;
-    }
+		if (arg.startsWith('[') && sIndexOfSA === -1) {
+			// Remove the leading '[', replace existing arg at this position
+			args[i] = arg.slice(1, arg.length);
+			sIndexOfSA = i;
+		}
 
-    if (arg.endsWith(']') && sIndexOfSA !== -1) {
-      // Remove the trailing ']', replace existing arg at this position
-      args[i] = arg.slice(0, arg.length - 1);
-      eIndexOfSA = i;
-    }
+		if (arg.endsWith(']') && sIndexOfSA !== -1) {
+			// Remove the trailing ']', replace existing arg at this position
+			args[i] = arg.slice(0, arg.length - 1);
+			eIndexOfSA = i;
+		}
 
-    args[i] = args[i].trim();
-  }
+		args[i] = args[i].trim();
+	}
 
-  // If there are, remove them from the `args`
-  // that get passed to parser.parse().
-  //
-  // If these are not removed, they will be
-  // treated like they are part of the t2-cli args
-  // themselves, which is undesirable.
-  if (sIndexOfSA !== -1 && eIndexOfSA !== -1) {
-    // Splice the subargs from the args that will be passed to nomnom,
-    // store on parser so we can get to them later.
-    parser.subargs = args.splice(sIndexOfSA, eIndexOfSA);
+	// If there are, remove them from the `args`
+	// that get passed to parser.parse().
+	//
+	// If these are not removed, they will be
+	// treated like they are part of the t2-cli args
+	// themselves, which is undesirable.
+	if (sIndexOfSA !== -1 && eIndexOfSA !== -1) {
+		// Splice the subargs from the args that will be passed to nomnom,
+		// store on parser so we can get to them later.
+		parser.subargs = args.splice(sIndexOfSA, eIndexOfSA);
 
-    // When there is only one subarg, make sure that:
-    //
-    // 1. There is no leading `[`
-    // 2. It is not an empty string
-    //
-    // t2 run index.js [0] =>
-    // [ '0' ]
-    //
-    // t2 run index.js [] =>
-    // []
-    //
-    // t2 run index.js [ 0] =>
-    // [ '0' ]
-    //
-    // t2 run index.js [1   0] =>
-    // [ '1', '0' ]
-    //
-    if (parser.subargs.length === 1) {
-      // Removes errant leading `[`
-      /* istanbul ignore else */
-      if (parser.subargs[0].startsWith('[')) {
-        parser.subargs[0] = parser.subargs[0].slice(1);
-      }
-    }
+		// When there is only one subarg, make sure that:
+		//
+		// 1. There is no leading `[`
+		// 2. It is not an empty string
+		//
+		// t2 run index.js [0] =>
+		// [ '0' ]
+		//
+		// t2 run index.js [] =>
+		// []
+		//
+		// t2 run index.js [ 0] =>
+		// [ '0' ]
+		//
+		// t2 run index.js [1   0] =>
+		// [ '1', '0' ]
+		//
+		if (parser.subargs.length === 1) {
+			// Removes errant leading `[`
+			/* istanbul ignore else */
+			if (parser.subargs[0].startsWith('[')) {
+				parser.subargs[0] = parser.subargs[0].slice(1);
+			}
+		}
 
-    // Clean out empty strings
-    parser.subargs = parser.subargs.filter(subarg => subarg);
-  }
+		// Clean out empty strings
+		parser.subargs = parser.subargs.filter((subarg) => subarg);
+	}
 
-  // Clear the spec from one call to the next. This is
-  // only necessary for testing the CLI (each call must be "fresh")
-  parser.specs = {};
-  parser.parse(args);
+	// Clear the spec from one call to the next. This is
+	// only necessary for testing the CLI (each call must be "fresh")
+	parser.specs = {};
+	parser.parse(args);
 };
 
-module.exports.closeSuccessfulCommand = function() {
-  log.spinner.stop();
-  process.exit(0);
+module.exports.closeSuccessfulCommand = function () {
+	log.spinner.stop();
+	process.exit(0);
 };
 
 // Allow options to be partially applied
-module.exports.closeFailedCommand = function(status, options = {}) {
-  var code = 1;
+module.exports.closeFailedCommand = function (status, options = {}) {
+	var code = 1;
 
-  if (status instanceof Error) {
-    log.error(status.toString());
-  } else {
-    /* istanbul ignore else */
-    if (status !== undefined) {
-      // Print a stern warning by default
-      options.type = options.type || 'warn';
-      log[options.type](status);
-    }
-  }
+	if (status instanceof Error) {
+		log.error(status.toString());
+	} else {
+		/* istanbul ignore else */
+		if (status !== undefined) {
+			// Print a stern warning by default
+			options.type = options.type || 'warn';
+			log[options.type](status);
+		}
+	}
 
-  log.spinner.stop();
-  process.exit(options.code || (status && status.code) || code);
+	log.spinner.stop();
+	process.exit(options.code || (status && status.code) || code);
 };
 
 if (require.main === module) {
-  module.exports(process.argv.slice(2));
+	module.exports(process.argv.slice(2));
 }
-

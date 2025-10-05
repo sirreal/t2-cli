@@ -7,7 +7,7 @@ var util = require('util');
 var fs = require('fs-extra');
 
 // Internal
-var log = require('../log');
+var log = require('../log.ts');
 
 var options;
 var resources = path.resolve(__dirname, './../../', 'resources/rust');

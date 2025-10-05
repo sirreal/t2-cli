@@ -50,6 +50,7 @@
     "usb-daemon-parser": "0.0.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.5",
     "concat-stream": "^2.0.0",
     "coveralls": "^3.0.2",
     "grunt": "^1.0.4",
