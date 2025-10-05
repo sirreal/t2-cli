@@ -11,7 +11,7 @@ import osenv from 'osenv';
 import * as sshpk from 'sshpk';
 
 // Internal
-import * as commands from './commands.ts';
+import commands from './commands.ts';
 import * as log from '../log.ts';
 import RSA from './rsa-delegation.ts';
 import Tessel from './tessel.ts';

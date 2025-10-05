@@ -6,7 +6,7 @@ import * as fs from 'node:fs';
 // ...
 
 // Internal
-import * as commands from './commands.ts';
+import commands from './commands.ts';
 import * as log from '../log.ts';
 import Tessel from './tessel.ts';
 import * as updates from '../update-fetch.ts';

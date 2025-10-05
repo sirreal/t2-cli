@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 
 // Internal
-import * as commands from './commands.ts';
+import commands from './commands.ts';
 import * as deployment from './deployment/index.ts';
 import * as log from '../log.ts';
 import Preferences from '../preferences.ts';

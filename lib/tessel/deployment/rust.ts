@@ -12,7 +12,7 @@ import * as tar from 'tar';
 var Reader = fstream.Reader;
 
 // Internal
-import * as commands from '../commands.ts';
+import commands from '../commands.ts';
 import lists from './lists/rust.js';
 import * as log from '../../log.ts';
 import * as remote from '../../remote.ts';

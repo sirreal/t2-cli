@@ -375,6 +375,7 @@ export class USBConnection extends Duplex {
 				var list = usb.getDeviceList();
 
 				for (var i = 0; i < list.length; i++) {
+					console.log({ device });
 					var device = list[i];
 					// Make sure this is a Tessel
 					if (

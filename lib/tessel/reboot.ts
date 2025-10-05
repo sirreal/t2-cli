@@ -5,7 +5,7 @@
 // ...
 
 // Internal
-import * as commands from './commands.ts';
+import commands from './commands.ts';
 import Tessel from './tessel.ts';
 
 export function registerMethods(Tessel) {

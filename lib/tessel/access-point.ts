@@ -5,7 +5,7 @@
 // ...
 
 // Internal
-import * as commands from './commands.ts';
+import commands from './commands.ts';
 import * as log from '../log.ts';
 
 function commitAndClose(tessel, status, resolve, reject) {
