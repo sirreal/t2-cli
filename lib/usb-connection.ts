@@ -1,7 +1,5 @@
 // System Objects
 
-import usb from 'usb';
-
 var util = require('util');
 var stream = require('stream');
 var events = require('events');

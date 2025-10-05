@@ -38,3 +38,7 @@ jspm_packages
 config.env
 !test/unit/fixtures/**/node_modules
 tmp
+
+*.d.ts
+*.tsbuildinfo
+*.d.ts.map

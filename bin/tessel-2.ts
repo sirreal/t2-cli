@@ -1,15 +1,13 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --force-node-api-uncaught-exceptions-policy=true --experimental-transform-types
 
 // System Objects
 //...
 
 // Third Party Dependencies
 var parser = require('nomnom').script('t2');
-const updateNotifier = require('update-notifier');
 const isRoot = require('is-root');
 
 // Internal
-var CrashReporter = require('../lib/crash-reporter');
 var controller = require('../lib/controller');
 var log = require('../lib/log');
 var Preferences = require('../lib/preferences');
@@ -18,28 +16,6 @@ const CLI_ENTRYPOINT = 'cli.entrypoint';
 
 // Check for updates
 const pkg = require('../package.json');
-
-/*
- * If a command has been run with root,
- * do not try to read the update-notifier config file.
- * It will change the read permissions of the file and fail
- * for all subsequent command line calls.
- * Can be removed once https://github.com/npm/write-file-atomic/issues/11
- * has been resolved.
- */
-/* istanbul ignore else */
-if (!isRoot()) {
-  try {
-    updateNotifier({
-      pkg
-    }).notify();
-  } catch (err) {
-    /* istanbul ignore next */
-    CrashReporter.submit(err.stack, {
-      silent: true
-    });
-  }
-}
 
 const flag = true;
 const hidden = true;
@@ -662,13 +638,7 @@ module.exports.closeFailedCommand = function(status, options = {}) {
   process.exit(options.code || (status && status.code) || code);
 };
 
-/* istanbul ignore if */
 if (require.main === module) {
   module.exports(process.argv.slice(2));
 }
 
-/* istanbul ignore else */
-if (global.IS_TEST_ENV) {
-  module.exports.makeCommand = makeCommand;
-  module.exports.nomnom = parser;
-}

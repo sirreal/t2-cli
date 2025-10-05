@@ -1,10 +1,9 @@
-'use strict';
-
 // System Objects
-const util = require('util');
+const util = require('node:util');
 
 // Third Party Dependencies
 const npmlog = require('npmlog');
+npmlog.level = 'debug';
 
 // "DEBUG ..."
 //
@@ -207,6 +206,7 @@ Object.assign(exports, {
     return flags[flag] === false;
   },
 });
+
 // Logging
 [
   'debug',
@@ -223,7 +223,7 @@ Object.assign(exports, {
   // behind, we can migrate to an arrow with explicit
   // rest `...args`.
   exports[level] = function() {
-    if (disabled || exports.isDisabled(level)) {
+    if (false || disabled || exports.isDisabled(level)) {
       return;
     }
     npmlog[level]('', util.format.apply(util, arguments));
