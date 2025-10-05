@@ -3,7 +3,6 @@ import * as util from 'node:util';
 
 // Third Party Dependencies
 import npmlog from 'npmlog';
-npmlog.level = 'debug';
 
 // "DEBUG ..."
 //
@@ -247,49 +246,49 @@ export function isDisabled(flag) {
 
 export function debug(...args: any[]) {
 	const level = 'debug';
-	if (false || disabled || isDisabled(level)) {
+	if (disabled || isDisabled(level)) {
 		return;
 	}
 	npmlog[level]('', util.format.apply(util, args));
 }
 export function trace(...args: any[]) {
 	const level = 'trace';
-	if (false || disabled || isDisabled(level)) {
+	if (disabled || isDisabled(level)) {
 		return;
 	}
 	npmlog[level]('', util.format.apply(util, args));
 }
 export function basic(...args: any[]) {
 	const level = 'basic';
-	if (false || disabled || isDisabled(level)) {
+	if (disabled || isDisabled(level)) {
 		return;
 	}
 	npmlog[level]('', util.format.apply(util, args));
 }
 export function info(...args: any[]) {
 	const level = 'info';
-	if (false || disabled || isDisabled(level)) {
+	if (disabled || isDisabled(level)) {
 		return;
 	}
 	npmlog[level]('', util.format.apply(util, args));
 }
 export function http(...args: any[]) {
 	const level = 'http';
-	if (false || disabled || isDisabled(level)) {
+	if (disabled || isDisabled(level)) {
 		return;
 	}
 	npmlog[level]('', util.format.apply(util, args));
 }
 export function warn(...args: any[]) {
 	const level = 'warn';
-	if (false || disabled || isDisabled(level)) {
+	if (disabled || isDisabled(level)) {
 		return;
 	}
 	npmlog[level]('', util.format.apply(util, args));
 }
 export function error(...args: any[]) {
 	const level = 'error';
-	if (false || disabled || isDisabled(level)) {
+	if (disabled || isDisabled(level)) {
 		return;
 	}
 	npmlog[level]('', util.format.apply(util, args));
